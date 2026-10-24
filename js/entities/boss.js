@@ -38,6 +38,9 @@
     this.guarding = false;
     this.guardHits = 0;
     this.stagger = 0;
+    this.rearCd = 0;
+    this.evadeCd = 0;
+    this.counterNow = false;
     this.runPh = 0;
     this.base = Pose.make();
     this.byId = {};
@@ -49,7 +52,7 @@
   Boss.prototype.constructor = Boss;
 
   // how fast things happen: phase 2 is quicker
-  Boss.prototype.tempo = function () { return this.phase >= 2 ? 0.85 : 1; };
+  Boss.prototype.tempo = function () { return this.phase >= 2 ? (this.def.p2tempo || 0.72) : 1; };
 
   Boss.prototype.threat = function () {
     if (this.mode !== 'attack' || !this.cur) return null;
@@ -109,6 +112,10 @@
       return;
     }
 
+    if (this.rearCd > 0) this.rearCd -= dt;
+    if (this.evadeCd > 0) this.evadeCd -= dt;
+    if (this.phase >= 2 && !p.dead && this.byId.spin) this.rearGuard(p);
+
     switch (this.mode) {
       case 'idle': this.idleAI(dt, p); break;
       case 'attack': this.atkUpdate(dt, p); break;
@@ -126,14 +133,39 @@
     this.animate(dt);
   };
 
+  // Phase 2: nobody gets a free hit from behind. If the player is behind (or just hit us from behind),
+  // cancel out of idle/recovery into an armoured spin.
+  Boss.prototype.rearGuard = function (p) {
+    if (this.rearCd > 0 || this.mode === 'stagger' || this.mode === 'roar' || this.mode === 'intro') return;
+    var rel = p.x - this.x, behind = rel * this.facing < -14, dist = Math.abs(rel);
+    if (!(behind && dist < 200) && !this.counterNow) return;
+    if (this.mode === 'attack') {
+      var c = this.cur, a = c.a, A = a.windup * this.tempo() + a.active;
+      if (c.t < A || a.id === 'spin' || a.leap || a.guard) return;   // never cancel the strike itself
+    } else if (this.mode !== 'idle') return;
+    this.counterNow = false;
+    this.rearCd = 1.1;
+    this.facing = rel >= 0 ? 1 : -1;
+    this.startAttack(this.byId.spin, p);
+  };
+
   Boss.prototype.idleAI = function (dt, p) {
     var dx = p.x - this.x, dist = Math.abs(dx), to = dx >= 0 ? 1 : -1;
     if (!p.dead) this.facing = to;
     this.think -= dt;
+    if (this.phase >= 2 && this.evadeCd <= 0 && dist < 230) {
+      var th = p.threat && p.threat();
+      if (th && p.act && p.act.d && p.act.d.id === 'hv' && Math.random() < 0.5) {
+        this.vx = -to * 950; this.evadeCd = 1.6; this.think = Math.min(this.think, 0.12);
+        this.scene.fx.dust(this.x, this.y, 5, 14);
+        this.scene.fx.ghost(this, 0xff7a3a);
+        return;
+      }
+    }
     var want = 0;
     if (dist > this.pref[1]) want = to;
     else if (dist < this.pref[0]) want = -to * 0.6;
-    this.vx = U.approach(this.vx, want * this.speed / this.tempo() * (this.phase >= 2 ? 1 : 0.9), 3200 * dt);
+    this.vx = U.approach(this.vx, want * this.speed / this.tempo() * (this.phase >= 2 ? 1.2 : 0.9), 4200 * dt);
     if (this.think <= 0 && !p.dead) {
       var a = this.choose(dist, p);
       if (a) this.startAttack(a, p); else this.think = 0.12;
@@ -150,6 +182,7 @@
     this.guardHits = 0;
     if (a.onStart) a.onStart(this, p);
     this.scene.fx.ring(this.x + this.facing * 10 * this.scale, this.y - this.h * 0.95, 4, 34, a.tell || 0xff5a2a, 0.3, 3);
+    if (TG.Sfx) TG.Sfx.play('tell');
   };
 
   Boss.prototype.atkUpdate = function (dt, p) {
@@ -157,6 +190,7 @@
     c.t += dt * 1000;
     var Wd = a.windup * tp, A = Wd + a.active, T = A + a.recover * tp;
     this.armorNow = !!a.armor && c.t < A;
+    if (this.phase >= 2 && !c.fired && c.t < Wd * 0.65 && !a.leap && !a.guard && !p.dead) this.facing = p.x >= this.x ? 1 : -1;
 
     if (a.guard) {
       this.vx *= Math.pow(0.001, dt);
@@ -171,6 +205,7 @@
 
     if (!c.fired && c.t >= Wd) {
       c.fired = true;
+      if (a.spin) { s.fx.ring(this.x, this.y - this.h * 0.55, 20, this.h * 1.05, 0xff8a3a, 0.3, 6); s.shake(0.006, 160); }
       if (a.smear) s.fx.smear(this.x + this.facing * 14 * this.scale, this.y + (a.smearY != null ? a.smearY : -this.h * 0.7), this.facing, a.smear, a.smearColor || 0xff9a5a, 0.26);
       if (a.jump) {
         var tx = p.x - this.x;
@@ -178,6 +213,7 @@
         this.vx = U.clamp(tx / (a.jump.air || 0.85), -a.jump.vx, a.jump.vx);
         this.grounded = false;
       }
+      if (TG.Sfx) TG.Sfx.play(a.armor || a.dmg >= 20 ? 'swing_heavy' : 'swing');
       if (a.onActive) a.onActive(this, p);
     }
 
@@ -187,6 +223,7 @@
         s.fx.ring(this.x, this.y - 4, 10, 190, 0xff7a2a, 0.4, 4);
         s.fx.dust(this.x, this.y, 12, 40);
         s.shake(0.009, 200);
+        if (TG.Sfx) TG.Sfx.play('slam');
       }
       if (c.landed) {
         c.landMs += dt * 1000;
@@ -239,6 +276,7 @@
       } else dmg = info.dmg * 0.08;
     }
 
+    if (this.phase >= 2 && info.src && (info.src.x - this.x) * this.facing < -10 && !this.guarding) this.counterNow = true;
     if (this.mode === 'stagger') dmg *= 1.4;        // punish window
     this.hp -= dmg;
     this.flash = blocked ? 0 : 0.09;
@@ -271,6 +309,8 @@
     this.scene.fx.ring(this.x, this.y - 60, 20, 340, 0xff6a2a, 0.7, 5);
     this.scene.fx.ring(this.x, this.y - 60, 10, 220, 0xffd27a, 0.5, 3);
     this.scene.shake(0.01, 420);
+    if (TG.Sfx) TG.Sfx.play('roar');
+    if (TG.Music) TG.Music.phase(2);
     if (this.def.onPhase2) this.def.onPhase2(this);
   };
 
@@ -301,6 +341,11 @@
       if (a.leap && c.fired) {
         if (!c.landed) Pose.mix(wind, hit, E.outCubic(Math.min(1, (c.t - Wd) / 260)), p);
         else Pose.mix(hit, b, E.inOutCubic(Math.min(1, c.landMs / (a.recover * tp))), p);
+        return;
+      }
+      if (a.spin && c.t >= Wd) {
+        Pose.mix(wind, hit, E.outCubic(Math.min(1, (c.t - Wd) / 120)), p);
+        p.rot = 360 * E.inOutCubic(Math.min(1, (c.t - Wd) / (a.active + 40)));
         return;
       }
       if (c.t < Wd) Pose.mix(b, wind, E.outCubic(Math.min(1, c.t / Wd)), p);

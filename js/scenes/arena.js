@@ -30,11 +30,13 @@ TG.ArenaScene = class extends Phaser.Scene {
     this.cameras.main.setScroll(this.cameraX, 0);
 
     TG.Record.begin(this.bossId);
+    if (TG.Music) TG.Music.play(def.music || 'warden');
     this.buildHud();
     this.cameras.main.fadeIn(500, 0, 0, 0);
+    this.mstate = { idle: 0, yieldT: 0, said: {}, yielded: false };
     if (def.onStart) def.onStart(this);
 
-    this.input.keyboard.on('keydown-ESC', function () { this.finishRecord('quit'); this.scene.start('Menu'); }, this);
+    this.input.keyboard.on('keydown-ESC', function () { this.finishRecord('quit'); if (TG.Music) TG.Music.fadeOut(400); this.scene.start('Menu'); }, this);
     this.input.keyboard.on('keydown-F2', function () { TG.debug.god = !TG.debug.god; }, this);
   }
 
@@ -58,6 +60,7 @@ TG.ArenaScene = class extends Phaser.Scene {
     if (this.over) return;
     this.over = true;
     this.finishRecord('lose');
+    if (TG.Music) TG.Music.fadeOut(900);
     this.slow = 0.3;
     this.time.delayedCall(1500, function () {
       this.cameras.main.fadeOut(600, 0, 0, 0);
@@ -67,10 +70,51 @@ TG.ArenaScene = class extends Phaser.Scene {
     }, [], this);
   }
 
+  // Both fall together: the killing blow on a reflecting Mirror is always lethal to the hero.
+  mutualKill(m, h) {
+    if (this.over) return;
+    this.over = true;
+    this.finishRecord('win');
+    TG.Story.flag('mirror_outcome', 'mutual');
+    TG.Record.decide('mirror', 'mutual');
+    [h, m].forEach(function (f) { f.mode = 'dead'; f.dead = true; f.act = { t: 0 }; f.vy = -240; f.grounded = false; f.iframe = false; });
+    this.freeze = 0.45; this.slow = 0.3;
+    this.shake(0.014, 800);
+    this.fx.ring(m.x, m.y - 55, 10, 520, 0xffffff, 1.0, 6);
+    this.fx.ring(h.x, h.y - 55, 10, 380, 0x9fd0ff, 0.8, 4);
+    if (TG.Sfx) TG.Sfx.play('shatter');
+    if (TG.Music) TG.Music.fadeOut(2500);
+    this.say(TG.Dialogue.mirror.mutual);
+    this.time.delayedCall(1500, function () { this.slow = 1; }, [], this);
+    this.exitAfter(7500);
+  }
+
+  // The player chose not to strike. No one dies.
+  finishEncounter(outcome) {
+    if (this.over) return;
+    this.over = true;
+    this.finishRecord('win');
+    TG.Story.flag('mirror_outcome', outcome);
+    TG.Record.decide('mirror', outcome);
+    this.fx.ring(this.boss.x, this.boss.y - 55, 10, 360, 0xfff2d0, 0.9, 4);
+    if (TG.Music) TG.Music.fadeOut(4000);
+    this.say(TG.Dialogue.mirror.forgiven);
+    this.exitAfter(8000);
+  }
+
+  exitAfter(ms) {
+    this.time.delayedCall(ms, function () {
+      this.cameras.main.fadeOut(900, 0, 0, 0);
+      this.time.delayedCall(950, function () { TG.Flow.next(this, this.idx); }, [], this);
+    }, [], this);
+  }
+
   onBossDefeated(b) {
     if (this.over) return;
     this.over = true;
     this.finishRecord('win');
+    if (TG.Music) TG.Music.fadeOut(3000);
+    if (TG.Sfx) TG.Sfx.play('hit_heavy');
     this.freeze = 0.28;
     this.slow = 0.35;
     this.shake(0.012, 500);

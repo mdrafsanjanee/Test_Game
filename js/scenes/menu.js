@@ -22,7 +22,7 @@ TG.MenuScene = class extends Phaser.Scene {
     this.add.text(W / 2, 458, 'R   erase the record', Object.assign({ fontSize: '16px', color: '#a7a2bd' }, st)).setOrigin(0.5);
 
     this.add.text(W / 2, 560,
-      'A / D  move     W / Space  jump (twice)     J  strike     K  heavy swing     L  dash     I  roll (hurts)\nS + jump  drop through a platform',
+      'A / D  move     W / Space  jump (twice)     J  strike     K  heavy swing     L  dash     I  roll (hurts)\nS + jump  drop through a platform     N  mute music',
       Object.assign({ fontSize: '15px', align: 'center', color: '#8a85a0', lineSpacing: 8 }, st)).setOrigin(0.5);
 
     var kb = this.input.keyboard;
@@ -31,6 +31,7 @@ TG.MenuScene = class extends Phaser.Scene {
     kb.on('keydown-M', function () { this.go(TG.Flow.index('mirror')); }, this);
     kb.on('keydown-R', function () { TG.Record.reset(); this.scene.restart(); }, this);
     this.cameras.main.fadeIn(600, 0, 0, 0);
+    if (TG.Music) TG.Music.play('menu');
   }
 
   go(idx) {

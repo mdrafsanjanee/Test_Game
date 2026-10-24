@@ -20,6 +20,7 @@ TG.Combat.prototype = {
       };
       if (foe.receiveHit(info)) {
         act.hit.add(foe);
+        if (TG.Sfx) TG.Sfx.play(d.dmg >= 20 ? 'hit_heavy' : 'hit');
         if (att.onDealt) att.onDealt(foe, info);
       }
     }

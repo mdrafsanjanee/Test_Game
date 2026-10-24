@@ -1,6 +1,10 @@
 // End of the current build. Reads the Record and picks a closing note.
 // Agent B: replace/extend TG.endings with the real endings (each: {when(R), title, text}).
 TG.endings = [
+  { id: 'mutual', when: function () { return TG.Story.flag('mirror_outcome') === 'mutual'; },
+    title: 'The Last Reflection', text: 'You struck down the last of yourself, and it struck you back. The stone is quiet now.' },
+  { id: 'forgiven', when: function () { return TG.Story.flag('mirror_outcome') === 'forgiven'; },
+    title: 'One Again', text: 'You lowered the blade. What the stone had taken came home.' },
   { id: 'cold', when: function (R) { return R.count('kill') > R.count('spare'); },
     title: 'The Cold Blade', text: 'You won every fight. You did not ask what any of them were protecting.' },
   { id: 'merciful', when: function (R) { return R.count('spare') > 0 && R.count('kill') === 0; },
@@ -36,5 +40,6 @@ TG.SummaryScene = class extends Phaser.Scene {
 
     this.input.keyboard.on('keydown-ENTER', function () { this.scene.start('Menu'); }, this);
     this.cameras.main.fadeIn(900, 0, 0, 0);
+    if (TG.Music) TG.Music.play('menu');
   }
 };

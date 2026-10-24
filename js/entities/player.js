@@ -67,6 +67,9 @@
     this.lastSafeX = x;
     this.base = W();
     this.lastStale = 1;
+    // per-fighter tuning (the Mirror boss changes these; the hero keeps 1)
+    this.speedMul = 1; this.windupMul = 1; this.recMul = 1; this.cdMul = 1;
+    this.phase = 1; this.reflect = 0; this.shield = false;
   }
   Player.prototype = Object.create(TG.Fighter.prototype);
   Player.prototype.constructor = Player;
@@ -80,10 +83,16 @@
     }
   });
 
+  // attack timings after this fighter's tuning: {Wd: end of windup, A: end of active, T: end of recovery}
+  Player.prototype.tm = function (d) {
+    var Wd = d.windup * this.windupMul, A = Wd + d.active;
+    return { Wd: Wd, A: A, T: A + d.recover * this.recMul };
+  };
+
   Player.prototype.threat = function () {
     if (this.mode !== 'attack') return null;
     var a = this.act, d = a.d;
-    if (a.t < d.windup + d.active) return { reach: d.reach + d.off };
+    if (a.t < this.tm(d).A) return { reach: d.reach + d.off };
     return null;
   };
 
@@ -138,7 +147,7 @@
       if (this.chain.t <= 0) this.endCombo();
     }
 
-    this.vx = U.approach(this.vx, m * RUN, (g ? GACC : AACC) * dt);
+    this.vx = U.approach(this.vx, m * RUN * this.speedMul, (g ? GACC : AACC) * this.speedMul * dt);
     if (m !== 0) this.facing = m;
 
     if (c.peek('up', 110)) {
@@ -150,11 +159,13 @@
         this.vy = JV; this.grounded = false; this.coyote = 0; this.jumpRising = true;
         this.scene.fx.dust(this.x, this.y, 6);
         this.rec('jump');
+        if (TG.Sfx && this.isHero) TG.Sfx.play('jump');
       } else if (this.airJumps > 0) {
         c.pressed('up', 110);
         this.airJumps--; this.vy = DJV; this.jumpRising = true; this.spin = DJ_SPIN;
         this.scene.fx.ring(this.x, this.y - 30, 6, 36, 0xbcd0ff, 0.28, 2);
         this.rec('djump');
+        if (TG.Sfx && this.isHero) TG.Sfx.play('jump2');
       }
     }
     if (this.jumpRising && !c.held('up') && this.vy < -300) { this.vy *= 0.5; this.jumpRising = false; }
@@ -179,6 +190,7 @@
     this.comboLen = this.chain ? this.comboLen + 1 : 1;
     this.chain = null;
     this.staleLog.push({ id: id, t: this.scene.clock });
+    if (!this.isHero) this.scene.fx.ring(this.x + this.facing * 12, this.y - 70, 3, 30, this.phase === 2 ? 0xffffff : 0xff6a5a, 0.2, 2);
     this.rec(key === 'heavy' ? 'heavy' : 'light');
     if (!this.grounded) this.rec('airlight');
   };
@@ -195,7 +207,7 @@
   Player.prototype.atkUpdate = function (dt) {
     var a = this.act, d = a.d, c = this.ctrl;
     a.t += dt * 1000;
-    var Wd = d.windup, A = Wd + d.active, T = A + d.recover;
+    var tmg = this.tm(d), Wd = tmg.Wd, A = tmg.A, T = tmg.T;
 
     if (d.next && c.peek('light', 170)) a.queued = true;
 
@@ -205,6 +217,7 @@
     }
     if (a.t >= Wd && !a.smeared) {
       a.smeared = true;
+      if (TG.Sfx) TG.Sfx.play(d.id === 'hv' || d.id === 'l3' ? 'swing_heavy' : 'swing', this.isHero ? 1 : 0.7);
       this.scene.fx.smear(this.x + this.facing * 10, this.y - 62, this.facing, d.smear,
         this.isHero ? 0xe6efff : 0xff9a8a, 0.22);
     }
@@ -255,13 +268,14 @@
     this.mode = 'dash';
     this.act = { t: 0, dir: dir };
     this.facing = dir;
-    this.dashCd = DASH_MS / 1000 + 0.2;
+    this.dashCd = (DASH_MS / 1000 + 0.2) * this.cdMul;
     if (!this.grounded) { this.airDash = false; this.floaty = true; this.vy = 0; }
-    this.vx = dir * DASH_V;
+    this.vx = dir * DASH_V * (this.speedMul > 1 ? 1 + (this.speedMul - 1) * 0.5 : 1);
     this.iframe = true;
     this.ghostT = 0;
     this.scene.fx.dust(this.x, this.y, 5, 10);
     this.rec('dash');
+    if (TG.Sfx) TG.Sfx.play('dash', this.isHero ? 1 : 0.6);
   };
 
   Player.prototype.dashUpdate = function (dt) {
@@ -286,11 +300,12 @@
     this.mode = 'roll';
     this.act = { t: 0, dir: dir, hit: new Set() };
     this.facing = dir;
-    this.rollCd = 0.3;
+    this.rollCd = 0.3 * this.cdMul;
     this.iframe = true;
     this.vx = dir * ROLL_V;
     this.scene.fx.dust(this.x, this.y, 6, 12);
     this.rec('roll');
+    if (TG.Sfx) TG.Sfx.play('roll', this.isHero ? 1 : 0.6);
   };
 
   Player.prototype.rollUpdate = function (dt) {
@@ -322,7 +337,25 @@
       s0.fx.spark(this.x, this.y - 50, info.kbx >= 0 ? 1 : -1, 10, 0xffc0b0, 1);
       s0.hitstop(info.hitstop || 60);
       s0.shake(info.shake || 0.003, 120);
-      if (this.hp <= 0) { this.hp = 0; this.die(); return true; }
+      var src = info.src, heroDead = false;
+      if (this.reflect > 0 && src && src.isHero && !src.dead) {      // phase 2: what you do to it, you do to yourself
+        var back = info.dmg * this.reflect;
+        if (this.hp <= 0) back = 1e6;                                // the killing blow is always lethal
+        if (!(TG.debug.god)) src.hp -= back;
+        src.flash = 0.18; src.invuln = Math.max(src.invuln, 0.05);
+        s0.fx.spark(src.x, src.y - 55, info.kbx >= 0 ? -1 : 1, 14, 0xffffff, 1.2);
+        s0.fx.ring(src.x, src.y - 55, 6, 60, 0xffffff, 0.3, 3);
+        if (TG.Sfx) TG.Sfx.play('reflect');
+        if (s0.def && s0.def.noteSwing) s0.def.noteSwing(s0);
+        if (src.hp <= 0) { src.hp = 0; heroDead = true; }
+      }
+      if (this.hp <= 0) {
+        this.hp = 0;
+        if (this.phase === 1 && this.onShatter) { this.onShatter(src); return true; }
+        if (heroDead) s0.mutualKill(this, src); else this.die();
+        return true;
+      }
+      if (heroDead) { src.die(); return true; }
       if (this.mpoise >= 22) {
         this.mpoise = 0; this.endCombo();
         this.mode = 'hurt'; this.act = { t: 0 }; this.invuln = 0.35;
@@ -339,7 +372,7 @@
     this.grounded = false;
     this.floaty = false;
     this.iframe = false;
-    if (this.isHero) TG.Record.hit();
+    if (this.isHero) { TG.Record.hit(); if (TG.Sfx) TG.Sfx.play('hurt'); }
     var s = this.scene;
     s.fx.spark(this.x, this.y - 50, info.kbx >= 0 ? 1 : -1, 12, 0xff6a4a, 1);
     s.hitstop(info.hitstop || 90);
@@ -349,6 +382,7 @@
   };
 
   Player.prototype.die = function () {
+    if (TG.Sfx) TG.Sfx.play('die');
     this.mode = 'dead';
     this.dead = true;
     this.act = { t: 0 };
@@ -364,7 +398,7 @@
       var sp = Math.abs(this.vx);
       if (sp > 50 && this.mode === 'free') {
         this.runPh += dt * (9 + (sp / RUN) * 7);
-        Pose.run(b, this.runPh, Math.min(1, sp / RUN));
+        Pose.run(b, this.runPh, Math.min(1, sp / (RUN * this.speedMul)));
       } else Pose.idle(b, this.time);
     } else Pose.air(b, this.vy);
 
@@ -377,10 +411,10 @@
         }
         break;
       case 'attack':
-        var d = a.d, Wd = d.windup, A = Wd + d.active;
+        var d = a.d, tmg = this.tm(d), Wd = tmg.Wd, A = tmg.A;
         if (a.t < Wd) Pose.mix(b, d.wind, E.outCubic(Math.min(1, a.t / Wd)), p);
         else if (a.t < A) Pose.mix(d.wind, d.hit, E.outBack(Math.min(1, (a.t - Wd) / (d.active * 0.7))), p);
-        else Pose.mix(d.hit, b, E.inOutCubic(Math.min(1, (a.t - A) / d.recover)), p);
+        else Pose.mix(d.hit, b, E.inOutCubic(Math.min(1, (a.t - A) / (d.recover * this.recMul))), p);
         break;
       case 'dash':
         Pose.mix(b, Pose.DASH, Math.min(1, a.t / 50), p);

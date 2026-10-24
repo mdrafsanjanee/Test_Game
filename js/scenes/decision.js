@@ -30,6 +30,7 @@ TG.DecisionScene = class extends Phaser.Scene {
     kb.on('keydown-ENTER', this.confirm, this);
     kb.on('keydown-SPACE', this.confirm, this);
     this.cameras.main.fadeIn(600, 0, 0, 0);
+    if (TG.Music) TG.Music.play('menu');
   }
 
   move(i) { if (!this.locked) { this.sel = i; this.paint(); } }

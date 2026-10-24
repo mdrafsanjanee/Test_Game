@@ -8,6 +8,7 @@ TG.DeathScene = class extends Phaser.Scene {
     var def = TG.bosses[this.d.boss], W = TG.W, H = TG.H, mirror = this.d.boss === 'mirror';
     var st = { fontFamily: 'Georgia, serif', color: mirror ? '#f0d6d6' : '#c9c4dc' };
     this.cameras.main.setBackgroundColor(0x000000);
+    if (TG.Music) TG.Music.fadeOut(300);
     var line = this.add.text(W / 2, H / 2 - 10, def.deathText || 'You have fallen.',
       Object.assign({ fontSize: mirror ? '46px' : '34px', fontStyle: 'italic', align: 'center' }, st)).setOrigin(0.5).setAlpha(0);
     var hint = this.add.text(W / 2, H / 2 + 70, this.d.tries > 1 ? 'Enter  try again   (' + this.d.tries + ')' : 'Enter  try again',

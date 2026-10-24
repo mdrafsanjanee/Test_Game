@@ -31,6 +31,7 @@ TG.Fighter.prototype = {
   get cy() { return this.y - this.h * 0.55; },
 
   attackBox: function (d) {
+    if (d.both) return { l: this.x - d.reach, r: this.x + d.reach, t: this.y + d.top, b: this.y + d.bot };
     var l = this.facing > 0 ? this.x + d.off : this.x - d.off - d.reach;
     return { l: l, r: l + d.reach, t: this.y + d.top, b: this.y + d.bot };
   },

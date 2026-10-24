@@ -12,6 +12,7 @@
   TG.registerBoss('warden', {
     name: 'The Ashen Warden',
     area: 'molten_mountain',
+    music: 'warden',
     deathText: 'The mountain keeps its own.',
 
     decision: {
@@ -26,8 +27,8 @@
 
     create: function (scene, x, y) {
       var b = new TG.Boss(scene, x, y, this, {
-        hp: 460, speed: 235, pref: [120, 240], phaseAt: 0.5, poise: 90, intro: 2.6, w: 56, h: 150,
-        think: [0.3, 0.8],
+        hp: 460, speed: 235, pref: [110, 220], phaseAt: 0.5, poise: 90, intro: 2.6, w: 56, h: 150,
+        think: [0.22, 0.65],
         rig: { scale: 1.58, horns: 17, limb: 7.5, torsoW: 13, rim: 0xff6a2a, rimA: 0.6, rimW: 4, eye: 0xffb347,
                weapon: { len: 78, w: 6, color: 0xff8a3a } },
         attacks: [
@@ -80,6 +81,19 @@
             smear: { r: 140, a0: 75, a1: -135, w: 16 } },
 
           // Phase 2 ------------------------------------------------------------------
+          // Armoured spin: fired automatically when anyone gets behind the Warden (see Boss.rearGuard).
+          { id: 'spin', chainOnly: true, both: true, spin: true, armor: true, windup: 200, active: 170, recover: 340,
+            dmg: 17, reach: 175, off: 0, top: -150, bot: 0, kb: 480, tell: 0xffd27a,
+            wind: W({ lean: 24, hipF: 34, kneeF: -40, hipB: -30, kneeB: -44, shF: 80, elF: 0, shB: 70, elB: 0, wpn: 0, head: 4, dy: -3 }),
+            hit: SWEEP_HIT, smear: { r: 150, a0: -90, a1: 90, w: 16 } },
+
+          // Fast gap-closer into the fury chain.
+          { id: 'rush', phase: 2, then: 'fury2', windup: 210, active: 200, recover: 70, dmg: 14, reach: 138, off: 20, top: -130, bot: -6, kb: 380, lunge: 1500,
+            range: [220, 620], weight: 1.4, tags: { passive: 1.2, evade: 0.6 }, tell: 0xff3a2a,
+            wind: W({ lean: -12, hipF: 26, kneeF: -24, hipB: -36, kneeB: -30, shF: -50, elF: 130, shB: -30, elB: 40, wpn: 0, head: 6 }),
+            hit: W({ lean: 44, hipF: 72, kneeF: -26, hipB: -68, kneeB: -50, shF: 78, elF: 5, shB: -50, elB: 10, wpn: 0, head: -16 }),
+            smear: { r: 124, a0: -14, a1: 14, w: 12 } },
+
           { id: 'wave', phase: 2, windup: 520, active: 60, recover: 560, dmg: 0, range: [250, 820], weight: 1.1,
             tags: { passive: 1.5, air: 0.4 }, tell: 0xff6a1a,
             wind: W({ lean: -20, hipF: 20, kneeF: -20, hipB: -28, kneeB: -26, shF: 150, elF: -6, shB: 120, elB: 8, wpn: 40, head: 10 }),

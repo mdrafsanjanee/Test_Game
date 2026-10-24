@@ -23,7 +23,8 @@
     begin: function (bossId) {
       this.live = {
         boss: bossId, t: 0, ev: [], counts: {}, sampleT: 0, samples: 0,
-        dist: 0, air: 0, close: 0, airHist: [], combos: [], hits: 0, dealt: 0
+        dist: 0, air: 0, close: 0, airHist: [], combos: [], hits: 0, dealt: 0,
+        behind: 0, cross: 0, prevSign: 0, crossT: -9
       };
     },
     tick: function (dt, player, foe) {
@@ -37,6 +38,12 @@
         L.samples++;
         L.dist += d;
         if (d < 130) L.close++;
+        // flanking: time spent behind the foe, and how often the player passes through to its other side
+        var rel = player.x - foe.x;
+        if (foe.facing && rel * foe.facing < -18) L.behind++;
+        var sg = rel >= 0 ? 1 : -1;
+        if (L.prevSign && sg !== L.prevSign && d < 130 && L.t - L.crossT > 0.6) { L.cross++; L.crossT = L.t; }
+        L.prevSign = sg;
         var a = player.grounded ? 0 : 1;
         L.air += a;
         L.airHist.push(a);
@@ -84,7 +91,8 @@
       this.save.fights.push({
         boss: L.boss, res: result, dur: L.t,
         c: c, dist: L.dist / n, air: L.air / n, close: L.close / n,
-        combo: combo, hits: L.hits, dealt: L.dealt
+        combo: combo, hits: L.hits, dealt: L.dealt,
+        behind: L.behind / n, cross: L.cross / Math.max(L.t, 1)
       });
       if (this.save.fights.length > 24) this.save.fights.shift();
       if (result === 'lose') this.save.deaths++;
@@ -99,27 +107,36 @@
       return n;
     },
 
+    // 0 = fights head-on, 1 = always slipping behind. Drives how the Mirror approaches.
+    flank: function (p) {
+      p = p || this.profile(5);
+      if (!p.n) return 0.4;   // no history yet: baseline mix
+      return TG.U.clamp(p.cross * 3.2 + p.behind * 1.8, 0.05, 0.95);
+    },
+
     // ---- the profile the Mirror copies --------------------------------------
     // Aggregates the last `n` fights against anyone but the Mirror itself.
     profile: function (n) {
       n = n || 5;
       var def = { light: 1.3, heavy: 0.15, dash: 0.25, roll: 0.12, jump: 0.3, djump: 0.1,
-                  dist: 170, air: 0.15, close: 0.4, combo: 2.2 };
+                  dist: 170, air: 0.15, close: 0.4, combo: 2.2, behind: 0.12, cross: 0.08 };
       var use = this.save.fights.filter(function (f) { return f.boss !== 'mirror' && f.dur >= 4; }).slice(-n);
       if (!use.length) return Object.assign({ n: 0 }, def);
 
       var dur = 0, s = { light: 0, heavy: 0, dash: 0, roll: 0, jump: 0, djump: 0 };
-      var dist = 0, air = 0, close = 0, combo = 0, comboN = 0;
+      var dist = 0, air = 0, close = 0, combo = 0, comboN = 0, behind = 0, cross = 0;
       use.forEach(function (f) {
         dur += f.dur;
         for (var k in s) s[k] += (f.c[k] || 0);
         dist += f.dist * f.dur; air += f.air * f.dur; close += f.close * f.dur;
+        behind += (f.behind || 0) * f.dur; cross += (f.cross || 0) * f.dur;
         if (f.combo > 0) { combo += f.combo; comboN++; }
       });
       var obs = {
         light: s.light / dur, heavy: s.heavy / dur, dash: s.dash / dur, roll: s.roll / dur,
         jump: s.jump / dur, djump: s.djump / dur,
         dist: dist / dur, air: air / dur, close: close / dur,
+        behind: behind / dur, cross: cross / dur,
         combo: comboN ? combo / comboN : def.combo
       };
       var b = Math.min(1, use.length / 3), out = { n: use.length };
