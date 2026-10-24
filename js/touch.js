@@ -22,6 +22,22 @@
     window.dispatchEvent(e);
   }
 
+  // Phaser reads keys once per frame. If a key-up arrives in the same frame as its key-down, the "just pressed"
+  // flag is wiped and the tap is lost (common on phones at low fps). So a release waits until one full game step
+  // has seen the press, then goes out. Held buttons are unaffected.
+  var steps = 0, hooked = false, later = [];
+  function hook() {
+    var g = window.TG_GAME;
+    if (hooked || !g || !g.events) return;
+    hooked = true;
+    g.events.on('poststep', function () {
+      steps++;
+      if (!later.length) return;
+      var l = later; later = [];
+      for (var i = 0; i < l.length; i++) l[i]();
+    });
+  }
+
   function build() {
     document.body.classList.add('touch-on');
     var root = document.createElement('div'); root.id = 'touch';
@@ -30,9 +46,10 @@
       b.id = 'tb-' + name; b.className = 'tb ' + (CLS[name] || '');
       b.innerHTML = k[3] + (k[4] ? '<small>' + k[4] + '</small>' : '');
       b.style.flexDirection = 'column';
-      var down = {};
-      function press(ev) { ev.preventDefault(); down[ev.pointerId] = 1; b.classList.add('on'); try { b.setPointerCapture(ev.pointerId); } catch (x) {} fire('keydown', name); }
-      function release(ev) { if (!down[ev.pointerId]) return; delete down[ev.pointerId]; b.classList.remove('on'); fire('keyup', name); }
+      var down = {}, seenAt = 0, upQueued = false;
+      function sendUp() { if (upQueued) { upQueued = false; fire('keyup', name); } }
+      function press(ev) { ev.preventDefault(); down[ev.pointerId] = 1; b.classList.add('on'); try { b.setPointerCapture(ev.pointerId); } catch (x) {} hook(); sendUp(); seenAt = steps; fire('keydown', name); }
+      function release(ev) { if (!down[ev.pointerId]) return; delete down[ev.pointerId]; b.classList.remove('on'); if (hooked && steps === seenAt) { upQueued = true; later.push(sendUp); } else fire('keyup', name); }
       b.addEventListener('pointerdown', press);
       ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) { b.addEventListener(t, release); });
       b.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
