@@ -48,8 +48,10 @@ TG.CutsceneScene = class extends Phaser.Scene {
 
   update(time, delta) {
     if (this.paused) return;
-    var dt = Math.min(delta, 50) / 1000 * (this.ff || 1);
-    for (var i = 0; i < this.updaters.length; i++) this.updaters[i](dt);
-    this.fx.update(dt);
+    var real = Math.min(delta, 50) / 1000, n = this.ff || 1, i, k;
+    for (k = 0; k < n; k++) {                      // small fixed steps so fast-forward never overshoots a walk target
+      for (i = 0; i < this.updaters.length; i++) this.updaters[i](real);
+      this.fx.update(real);
+    }
   }
 };
