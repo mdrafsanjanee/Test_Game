@@ -9,6 +9,7 @@ TG.ArenaScene = class extends Phaser.Scene {
   }
 
   create() {
+    var self = this;
     var def = TG.bosses[this.bossId], area = TG.areas[def.area];
     this.def = def; this.area = area;
     this.world = new TG.World(area);
@@ -36,7 +37,7 @@ TG.ArenaScene = class extends Phaser.Scene {
     this.mstate = { idle: 0, yieldT: 0, said: {}, yielded: false };
     if (def.onStart) def.onStart(this);
 
-    this.input.keyboard.on('keydown-ESC', function () { this.finishRecord('quit'); if (TG.Music) TG.Music.fadeOut(400); this.scene.start('Menu'); }, this);
+    TG.Pause.attach(this, { onQuit: function () { self.finishRecord('quit'); } });
     this.input.keyboard.on('keydown-F2', function () { TG.debug.god = !TG.debug.god; }, this);
   }
 
@@ -48,6 +49,12 @@ TG.ArenaScene = class extends Phaser.Scene {
   say(lines) {
     if (!Array.isArray(lines)) lines = [lines];
     for (var i = 0; i < lines.length; i++) this.subQ.push(TG.Story.line(lines[i]));
+  }
+
+  healHint() {
+    var n = this.player.healCharge;
+    this.hintTxt.setText(this.player.hp >= this.player.maxHp ? 'Already whole.' : 'Land ' + (4 - n) + ' more hit' + (4 - n === 1 ? '' : 's') + ' to heal');
+    this.hintT = 1.6;
   }
 
   onFighterDead(f) {
@@ -141,6 +148,10 @@ TG.ArenaScene = class extends Phaser.Scene {
       .setOrigin(0.5, 1).setScrollFactor(0).setDepth(101).setShadow(0, 2, '#000', 6);
     this.subTxt = this.add.text(TG.W / 2, 132, '', Object.assign({ fontSize: '23px', align: 'center', wordWrap: { width: 960 } }, st))
       .setOrigin(0.5, 1).setScrollFactor(0).setDepth(101).setShadow(0, 2, '#000', 8);
+    this.healTxt = this.add.text(118, 49, '', Object.assign({ fontSize: '14px', color: '#fff2d0' }, st)).setScrollFactor(0).setDepth(101);
+    this.hintTxt = this.add.text(TG.W / 2, 210, '', Object.assign({ fontSize: '18px', color: '#c9c4dc', fontStyle: 'italic' }, st))
+      .setOrigin(0.5).setScrollFactor(0).setDepth(101).setAlpha(0).setShadow(0, 2, '#000', 6);
+    this.hintT = 0;
     this.subQ = []; this.subCur = null; this.subT = 0;
     if (TG.debug.fps) this.fpsT = this.add.text(8, 700, '', { fontSize: '12px', color: '#6f6' }).setScrollFactor(0).setDepth(102);
   }
@@ -155,6 +166,23 @@ TG.ArenaScene = class extends Phaser.Scene {
     g.fillStyle(0x000000, 0.55); g.fillRect(36, 30, 304, 12);
     g.fillStyle(0xffffff, 0.55); g.fillRect(38, 32, 300 * this.lagP, 8);
     g.fillStyle(0xbcd0ff, 1); g.fillRect(38, 32, 300 * fp, 8);
+    // heal charge: four pips under the bar; they glow when a heal is ready (hold H)
+    var ready = p.healCharge >= 4, pulse = 0.6 + 0.4 * Math.sin(this.time.now / 140);
+    for (var i = 0; i < 4; i++) {
+      var on = i < p.healCharge;
+      g.fillStyle(0x000000, 0.55); g.fillCircle(45 + i * 17, 56, 6.5);
+      if (on) { g.fillStyle(ready ? 0xfff2d0 : 0xbcd0ff, ready ? pulse : 1); g.fillCircle(45 + i * 17, 56, 4.5); }
+      else { g.lineStyle(1.5, 0xbcd0ff, 0.45); g.strokeCircle(45 + i * 17, 56, 4.5); }
+    }
+    this.healTxt.setText(ready ? 'H  heal' : '').setAlpha(pulse);
+    if (p.mode === 'heal' && p.act) {                       // progress ring while channelling
+      var sx = p.x - this.cameras.main.scrollX, sy = p.y - 55;
+      g.lineStyle(4, 0xfff2d0, 0.9); g.beginPath();
+      g.arc(sx, sy, 62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, p.act.t / TG.Player.HEAL_MS)); g.strokePath();
+    }
+    if (this.hintT > 0) { this.hintT -= real; this.hintTxt.setAlpha(Math.min(1, this.hintT * 2)); }
+    else this.hintTxt.setAlpha(0);
+
     // boss: wide bar bottom
     var bw = 640, bx = (TG.W - bw) / 2;
     g.fillStyle(0x000000, 0.6); g.fillRect(bx - 2, 652, bw + 4, 14);
@@ -177,6 +205,7 @@ TG.ArenaScene = class extends Phaser.Scene {
 
   // ---- frame loop ---------------------------------------------------------------
   update(time, delta) {
+    if (this.paused) return;
     var real = Math.min(delta, 50) / 1000, STEP = 1 / 60;
     this.ctrl.update(this.nowMs);
 

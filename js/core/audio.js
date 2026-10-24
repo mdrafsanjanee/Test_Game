@@ -79,6 +79,8 @@
     hit: function (t, v) { noise(t, 0.07, 0.3 * v, sfxBus, 'lowpass', 2600); tone('sine', [190, 70], t, 0.12, 0.34 * v, sfxBus); },
     hit_heavy: function (t, v) { noise(t, 0.14, 0.45 * v, sfxBus, 'lowpass', 2200); tone('sine', [130, 38], t, 0.3, 0.55 * v, sfxBus); tone('square', [420, 120], t, 0.06, 0.1 * v, sfxBus, { lp: 1500 }); },
     hurt: function (t, v) { tone('sawtooth', [260, 90], t, 0.22, 0.22 * v, sfxBus, { lp: 900 }); noise(t, 0.12, 0.25 * v, sfxBus, 'lowpass', 1500); },
+    heal_ready: function (t, v) { tone('sine', [660, 990], t, 0.16, 0.2 * v, sfxBus); tone('sine', [990, 1320], t + 0.08, 0.2, 0.14 * v, sfxBus); },
+    heal: function (t, v) { [523, 659, 784, 1047].forEach(function (f, i) { tone('sine', [f, f], t + i * 0.07, 0.5, 0.2 * v, sfxBus); }); },
     dash: function (t, v) { noise(t, 0.16, 0.2 * v, sfxBus, 'bandpass', 2400, 400, 0.8); },
     roll: function (t, v) { noise(t, 0.26, 0.16 * v, sfxBus, 'lowpass', 900, 300); },
     jump: function (t, v) { tone('sine', [300, 560], t, 0.09, 0.1 * v, sfxBus); },
@@ -237,6 +239,7 @@
     },
     fadeOut: function (ms) { this.current = null; killCur((ms || 1000) / 1000); stopFile(ms || 1000); },
     stop: function () { this.fadeOut(300); },
+    pause: function (on) { if (!ctx) return; if (on) ctx.suspend(); else ctx.resume(); },
     toggleMute: function () {
       muted = !muted;
       if (master) master.gain.value = muted ? 0 : 0.85;

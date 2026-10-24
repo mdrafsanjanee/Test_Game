@@ -17,7 +17,13 @@ TG.CutsceneScene = class extends Phaser.Scene {
     var fn = TG.cutscenes[this.d.id];
     if (!fn) { console.warn('Missing cutscene', this.d.id); TG.Flow.next(this, this.d.idx); return; }
 
-    this.input.keyboard.on('keydown-ESC', function () { self.scene.start('Menu'); });
+    TG.Pause.attach(this, {});
+    // Skip: fast-forward the whole timeline (flags and choices still resolve; a choice waits for you)
+    this.ff = 1;
+    this.skipTxt = this.add.text(TG.W - 78, 30, 'Enter  skip', Object.assign({ fontSize: '14px', color: '#8a85a0' }, st)).setOrigin(1, 0.5).setDepth(299).setAlpha(0.7);
+    var skip = function () { if (self.paused || self.ff > 1) return; self.ff = 16; self.time.timeScale = 16; self.tweens.timeScale = 16; self.skipTxt.setText('skipping…'); };
+    this.input.keyboard.on('keydown-ENTER', skip);
+    this.input.keyboard.on('keydown-SPACE', skip);
     var finished = false;
     fn(this, function () {
       if (finished) return;
@@ -41,7 +47,8 @@ TG.CutsceneScene = class extends Phaser.Scene {
   fadeOut(ms, cb) { this.cameras.main.fadeOut(ms || 600, 0, 0, 0); if (cb) this.time.delayedCall((ms || 600) + 20, cb); }
 
   update(time, delta) {
-    var dt = Math.min(delta, 50) / 1000;
+    if (this.paused) return;
+    var dt = Math.min(delta, 50) / 1000 * (this.ff || 1);
     for (var i = 0; i < this.updaters.length; i++) this.updaters[i](dt);
     this.fx.update(dt);
   }

@@ -32,6 +32,17 @@ TG.MirrorBrain.prototype = {
 
     var dx = foe.x - f.x, dist = Math.abs(dx), to = dx >= 0 ? 1 : -1, g = f.grounded;
 
+    // 0) heal when charged and hurt (hero bot only)
+    if (this.healT > 0) {
+      this.healT -= dt; c.hold('heal', true);
+      if (f.mode === 'hurt') this.healT = 0;
+      return;
+    }
+    c.hold('heal', false);
+    if (f.isHero && f.mode === 'free' && g && f.healCharge >= 4 && f.hp < f.maxHp * 0.6 && !(foe.threat && foe.threat())) {
+      c.press('heal'); c.hold('heal', true); this.healT = 1.5; return;
+    }
+
     // 1) react to an incoming attack (after a human-ish delay)
     var th = foe.threat ? foe.threat() : null;
     if (th && dist < th.reach + 70) this.threatT += dt; else { this.threatT = 0; this.dodged = false; }

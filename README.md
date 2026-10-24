@@ -19,9 +19,13 @@ No install, no build. Phaser is vendored in `lib/`.
 | K | heavy swing (slow, breaks guards) |
 | L | dash |
 | I | roll (damages enemies) |
+| H (hold) | heal: raise the sword for ~1.2s; needs 4 landed hits, any hit on you interrupts |
 | S + jump | drop through a platform |
-| Esc | leave fight |
+| Esc / P | pause (Q leaves to the menu) |
+| Enter / Space | skip a cutscene (fast-forward) |
 | N | mute music |
+
+Phones and tablets get on-screen buttons automatically (`?touch=1` forces them on a desktop). Play in landscape.
 
 Dev: `?boss=warden`, `?boss=mirror`, `?boss=girl_guard`, `?god=1`, `?bot=1`, `?fps=1`.
 

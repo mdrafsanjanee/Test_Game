@@ -103,6 +103,14 @@ Baseline is the same for everyone: fast, evasive, reads your attacks. The record
 Phase 1: protective shield. Break it once and it shatters (hero healed to full). Phase 2: 70% of every blow you land is reflected onto you and the killing blow is always lethal to both (`scene.mutualKill`, outcome `mutual`). It kites and dodges. Stop swinging ~10s and it yields (`finishEncounter('forgiven')`). Dying anywhere in this fight shows "How did I become this?".
 Outcomes are saved as `TG.Story.flag('mirror_outcome')` = `'mutual'|'forgiven'` and `TG.Record.decide('mirror', ...)`; endings read them.
 
+## Healing, pause, skip, touch (engine)
+- Heal: hold `H` (hero only). Every landed hit adds a charge (max 4, `Player.healCharge`); with 4 charges and `hp < maxHp`, pressing H starts a ~1.25s channel (`mode 'heal'`, sword-raised pose). Release or any hit cancels it and loses progress (charge is kept); completing it restores 40% max HP and spends the charges. HUD pips + progress ring are in `arena.js`.
+- Tutorial: `ash_husk` boss in `ash_basin` (sequence item right after `cut:cliff_betrayal`). Hero starts at 42% HP, cannot die there, the husk will not fall until the hero has healed once.
+- Pause: `TG.Pause.attach(scene)` (`js/core/pause.js`) used by Arena and Cutscene. Esc/P toggle, Q quits. Scenes must `return` early from `update` while `scene.paused`.
+- Cutscene skip: Enter/Space fast-forwards the scene clock x16 (`time.timeScale`, `tweens.timeScale`, updater dt), so flags and choices still resolve; a choice prompt still waits for the player.
+- Touch: `js/touch.js` + `css/touch.css` draw buttons that dispatch real `KeyboardEvent`s, so every scene works unchanged. Auto-on for coarse-pointer devices, `?touch=1` / `?touch=0` override. `body[data-scene]` picks the button set.
+- Test: `python3 tools/heal_test.py`.
+
 ## Combat rules (engine, do not bypass)
 Hero moves: `J` strike (3-hit chain; the 3rd hit is a heavier, committed finisher), `K` heavy swing (slow, armor-breaking, breaks guards),
 `L` dash (i-frames, air dash once), `I` roll (i-frames, damages), `W/Space` jump + double jump. Spam protection is structural:

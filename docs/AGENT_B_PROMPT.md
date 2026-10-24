@@ -19,6 +19,7 @@ Do **not** edit anything else. If the engine needs something, open a GitHub issu
 ## Status (update this as you go)
 Done and merged: `ring_road` cutscene (cursed ring choice), `cliff_betrayal` cutscene, `ruins` area, `girl_guard` boss (the Hollow Attendant), `TG.Stage`/`TG.GirlLook` helpers, lava ending.
 New engine features you can use (see `docs/ARCHITECTURE.md`): music/SFX (`music:` on a boss def, `TG.Sfx.play`), a rear-guard `spin` attack for bosses, `both:true` hitboxes, and the Mirror's outcomes.
+Engine (Agent A) also added: a heal system (hold H, 4 hits), pause, skippable cutscenes (Enter), phone controls, and the heal tutorial (`ash_husk` boss + `ash_basin` area, inserted in `sequence.js` and `manifest.content.js`). Keep those entries when you edit those files.
 Next: ruins NPC encounters, village, party-member bosses, palace + the girl's mockery boss, school butterflies cutscene, remaining endings. Add a music track for each new area boss (use `TG.Music` or a CC0 file via `TG.MUSIC_FILES`).
 
 ## Deliverables, in priority order (ship each as its own PR into `main`, from a `content/<name>` branch)

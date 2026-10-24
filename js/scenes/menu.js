@@ -22,7 +22,7 @@ TG.MenuScene = class extends Phaser.Scene {
     this.add.text(W / 2, 458, 'R   erase the record', Object.assign({ fontSize: '16px', color: '#a7a2bd' }, st)).setOrigin(0.5);
 
     this.add.text(W / 2, 560,
-      'A / D  move     W / Space  jump (twice)     J  strike     K  heavy swing     L  dash     I  roll (hurts)\nS + jump  drop through a platform     N  mute music',
+      'A / D  move     W / Space  jump (twice)     J  strike     K  heavy swing     L  dash     I  roll (hurts)\nH  hold to heal (after 4 hits)     S + jump  drop through     Esc / P  pause     N  mute',
       Object.assign({ fontSize: '15px', align: 'center', color: '#8a85a0', lineSpacing: 8 }, st)).setOrigin(0.5);
 
     var kb = this.input.keyboard;

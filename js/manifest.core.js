@@ -7,6 +7,7 @@ window.TG_MANIFEST_CORE = [
   'js/core/story.js',
   'js/core/fx.js',
   'js/core/audio.js',
+  'js/core/pause.js',
   'js/core/combat.js',
   'js/core/input.js',
   'js/core/rig.js',

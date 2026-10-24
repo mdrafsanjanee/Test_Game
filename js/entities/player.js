@@ -37,6 +37,8 @@
           wind: W({ lean: -6, hipF: 58, kneeF: -76, hipB: -12, kneeB: -52, shF: 160, elF: -30, shB: 80, elB: 20, wpn: 25 }),
           hit: W({ lean: 18, hipF: 48, kneeF: -60, hipB: -14, kneeB: -44, shF: 70, elF: 8, shB: -40, elB: 10, wpn: -10 }) }
   };
+  var HEAL_MS = 1250, HEAL_HITS = 4, HEAL_FRAC = 0.4;
+  var HEAL_POSE = W({ lean: -22, shF: 175, elF: -12, shB: 170, elB: -8, hipF: 24, hipB: -24, head: 14, wpn: 20 });
   var ROLL_DEF = { id: 'roll', dmg: 7, poise: 12, reach: 54, off: -26, top: -48, bot: 0, kb: 240, hitstop: 70, shake: 0.003 };
 
   var HERO_RIG = { scale: 1.15, rim: 0xa8c4ff, rimA: 0.55, eye: 0xffffff, weapon: { color: 0xe8eefc } };
@@ -70,7 +72,9 @@
     // per-fighter tuning (the Mirror boss changes these; the hero keeps 1)
     this.speedMul = 1; this.windupMul = 1; this.recMul = 1; this.cdMul = 1;
     this.phase = 1; this.reflect = 0; this.shield = false;
+    this.healCharge = 0; this.healT = 0;
   }
+  Player.HEAL_MS = HEAL_MS; Player.HEAL_HITS = HEAL_HITS;
   Player.prototype = Object.create(TG.Fighter.prototype);
   Player.prototype.constructor = Player;
   Player.ATK = ATK;
@@ -117,6 +121,7 @@
       case 'dash': this.dashUpdate(dt); break;
       case 'roll': this.rollUpdate(dt); break;
       case 'hurt': this.hurtUpdate(dt); break;
+      case 'heal': this.healUpdate(dt); break;
     }
     this.physics(dt);
     if (this.grounded && !this.onPlatform && this.mode === 'free') this.lastSafeX = this.x;
@@ -171,6 +176,11 @@
     if (this.jumpRising && !c.held('up') && this.vy < -300) { this.vy *= 0.5; this.jumpRising = false; }
     if (this.vy >= 0) this.jumpRising = false;
 
+    if (this.isHero && c.peek('heal', 130)) {
+      if (g && this.healCharge >= HEAL_HITS && this.hp < this.maxHp) { this.startHeal(); return; }
+      c.pressed('heal', 130);
+      if (this.healCharge < HEAL_HITS && this.scene.healHint) this.scene.healHint();
+    }
     if (c.peek('light', 130)) {
       this.startAttack(this.chain ? this.chain.id : (g ? 'l1' : 'a1'), 'light');
       return;
@@ -256,7 +266,39 @@
   };
 
   Player.prototype.onDealt = function (tgt, info) {
-    if (this.isHero) { TG.Record.dealt(info.dmg); }
+    if (this.isHero) {
+      TG.Record.dealt(info.dmg);
+      if (this.healCharge < HEAL_HITS && ++this.healCharge === HEAL_HITS && TG.Sfx) TG.Sfx.play('heal_ready');
+    }
+  };
+
+  // ---- healing: hold H with the sword raised; any hit interrupts ----------------------------------
+  Player.prototype.startHeal = function () {
+    this.ctrl.pressed('heal', 130);
+    this.endCombo();
+    this.mode = 'heal'; this.act = { t: 0, pulse: 0 };
+    this.vx = 0;
+    this.scene.fx.ring(this.x, this.y - 55, 6, 50, 0xfff2d0, 0.35, 2);
+    this.rec('heal');
+  };
+  Player.prototype.healUpdate = function (dt) {
+    var a = this.act, c = this.ctrl;
+    this.vx *= Math.pow(0.0005, dt);
+    if (!c.held('heal') || !this.grounded) { this.mode = 'free'; this.act = null; return; }   // let go: progress is lost
+    a.t += dt * 1000; a.pulse -= dt;
+    if (a.pulse <= 0) {
+      a.pulse = 0.22;
+      this.scene.fx.ring(this.x, this.y - 55, 52, 8, 0xfff2d0, 0.3, 2);
+      this.scene.fx.spark(this.x, this.y - 20, 0, 2, 0xfff2d0, 0.6);
+    }
+    if (a.t >= HEAL_MS) {
+      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * HEAL_FRAC);
+      this.healCharge = 0; this.healed = (this.healed || 0) + 1;
+      this.mode = 'free'; this.act = null;
+      this.scene.fx.ring(this.x, this.y - 55, 8, 150, 0xfff2d0, 0.7, 4);
+      this.scene.fx.spark(this.x, this.y - 60, 1, 14, 0xfff2d0, 1);
+      if (TG.Sfx) TG.Sfx.play('heal');
+    }
   };
 
   // ---- dash & roll --------------------------------------------------------
@@ -422,6 +464,10 @@
       case 'roll':
         Pose.mix(b, Pose.ROLL, Math.min(1, a.t / 70), p);
         p.rot = 360 * E.inOutCubic(Math.min(1, a.t / ROLL_MS));
+        break;
+      case 'heal':
+        Pose.mix(b, HEAL_POSE, E.outBack(Math.min(1, a.t / 320)), p);
+        p.shF += Math.sin(a.t / 40) * 2;
         break;
       case 'hurt':
         Pose.mix(b, Pose.HURT, Math.min(1, a.t / 60), p);

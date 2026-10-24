@@ -4,7 +4,7 @@
 //   ctrl.held(action)    is the action currently held
 //   ctrl.peek(action,ms) was it pressed within the last ms (does not consume)
 //   ctrl.pressed(action,ms)  same, but consumes the press
-// Actions: up (jump), down, light, heavy, dash, roll
+// Actions: up (jump), down, light, heavy, dash, roll, heal (hold)
 
 TG.Ctrl = function () {
   this.move = 0;
@@ -35,7 +35,7 @@ TG.KeyboardCtrl = function (scene) {
   var map = {
     left: [K.A, K.LEFT], right: [K.D, K.RIGHT],
     up: [K.W, K.UP, K.SPACE], down: [K.S, K.DOWN],
-    light: [K.J, K.Z], heavy: [K.K, K.X], dash: [K.L, K.C, K.SHIFT], roll: [K.I, K.V, K.CTRL]
+    light: [K.J, K.Z], heavy: [K.K, K.X], dash: [K.L, K.C, K.SHIFT], roll: [K.I, K.V, K.CTRL], heal: [K.H]
   };
   this.keys = {};
   for (var a in map) this.keys[a] = map[a].map(function (c) { return kb.addKey(c); });
