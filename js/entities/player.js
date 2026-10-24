@@ -37,7 +37,7 @@
           wind: W({ lean: -6, hipF: 58, kneeF: -76, hipB: -12, kneeB: -52, shF: 160, elF: -30, shB: 80, elB: 20, wpn: 25 }),
           hit: W({ lean: 18, hipF: 48, kneeF: -60, hipB: -14, kneeB: -44, shF: 70, elF: 8, shB: -40, elB: 10, wpn: -10 }) }
   };
-  var HEAL_MS = 1250, HEAL_HITS = 4, HEAL_FRAC = 0.4;
+  var HEAL_MS = 1250, HEAL_HITS = 8, HEAL_FRAC = 0.4;
   var HEAL_POSE = W({ lean: -22, shF: 175, elF: -12, shB: 170, elB: -8, hipF: 24, hipB: -24, head: 14, wpn: 20 });
   var ROLL_DEF = { id: 'roll', dmg: 7, poise: 12, reach: 54, off: -26, top: -48, bot: 0, kb: 240, hitstop: 70, shake: 0.003 };
 
@@ -267,7 +267,10 @@
 
   Player.prototype.onDealt = function (tgt, info) {
     if (this.isHero) TG.Record.dealt(info.dmg);
-    if ((this.isHero || this.canHeal) && this.healCharge < HEAL_HITS && ++this.healCharge === HEAL_HITS && TG.Sfx) TG.Sfx.play('heal_ready', this.isHero ? 1 : 0.5);
+    if ((this.isHero || this.canHeal) && this.healCharge < HEAL_HITS) {       // a heavy swing is worth 2, everything else 1
+      this.healCharge = Math.min(HEAL_HITS, this.healCharge + (info.id === 'hv' ? 2 : 1));
+      if (this.healCharge === HEAL_HITS && TG.Sfx) TG.Sfx.play('heal_ready', this.isHero ? 1 : 0.5);
+    }
   };
 
   // ---- healing: hold H with the sword raised; any hit interrupts ----------------------------------
@@ -275,7 +278,7 @@
     this.ctrl.pressed('heal', 130);
     this.endCombo();
     this.mode = 'heal'; this.act = { t: 0, pulse: 0 };
-    this.healCharge = 0;                      // all four shards are spent the moment you start; an interrupt wastes them
+    this.healCharge = 0;                      // all the shards are spent the moment you start; an interrupt wastes them
     this.vx = 0;
     this.scene.fx.ring(this.x, this.y - 55, 6, 50, 0xfff2d0, 0.35, 2);
     this.rec('heal');
@@ -369,7 +372,7 @@
       a.ring -= dt;
       if (a.ring <= 0) { a.ring = 0.16; this.scene.fx.ring(this.x, this.y - 112, 4, 20, 0xffe08a, 0.6, 2); }
     }
-    if (a.t >= 300 + a.stun * 1000) { this.mode = 'free'; this.act = null; }
+    if (a.t >= 300 + (a.stun || 0) * 1000) { this.mode = 'free'; this.act = null; }
   };
 
   Player.prototype.receiveHit = function (info) {
@@ -403,11 +406,7 @@
         return true;
       }
       if (heroDead) { src.die(); return true; }
-      if (this.mpoise >= 22) {
-        this.mpoise = 0; this.endCombo();
-        this.mode = 'hurt'; this.act = { t: 0 }; this.invuln = 0.35;
-        this.vx = info.kbx * 0.8; this.vy = -200; this.grounded = false; this.iframe = false; this.floaty = false;
-      } else this.vx += info.kbx * 0.25;
+      this.mpoise = 0; this.vx += info.kbx * 0.25;      // the Mirror is never staggered or stunned
       return true;
     }
     this.invuln = info.stun ? 0.35 + info.stun + 0.5 : 0.95;

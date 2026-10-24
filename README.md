@@ -19,7 +19,7 @@ No install, no build. Phaser is vendored in `lib/`.
 | K | heavy swing (slow, breaks guards) |
 | L | dash |
 | I | roll (damages enemies) |
-| H (hold) | heal: raise the sword for ~1.2s; needs 4 landed hits, any hit on you interrupts |
+| H (hold) | heal: raise the sword for ~1.2s; needs 8 hit-points of charge (heavy swing = 2, other hits = 1), any hit on you interrupts |
 | S + jump | drop through a platform |
 | Esc / P | pause (Q leaves to the menu) |
 | Enter / Space (hold) | fast-forward a cutscene; tap to latch, tap or Esc to stop |

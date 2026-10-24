@@ -39,7 +39,7 @@ TG.MirrorBrain.prototype = {
       return;
     }
     c.hold('heal', false);
-    if (f.isHero && f.mode === 'free' && g && f.healCharge >= 4 && f.hp < f.maxHp * 0.6 && !(foe.threat && foe.threat())) {
+    if (f.isHero && f.mode === 'free' && g && f.healCharge >= 8 && f.hp < f.maxHp * 0.6 && !(foe.threat && foe.threat())) {
       c.press('heal'); c.hold('heal', true); this.healT = 1.5; return;
     }
 
@@ -146,7 +146,7 @@ TG.ShadeBrain.prototype = {
     if (k === 'through') { c.move = to; c.press('dash'); this.after = { t: 0.26, kind: 'punish' }; }
     else if (k === 'back') { c.move = -to; c.press('dash'); this.after = { t: 0.3, kind: this.phase === 2 ? 'punish' : 'rush' }; }
     else if (k === 'roll') { c.move = to; c.press('roll'); this.after = { t: 0.46, kind: 'punish' }; }
-    else { c.move = U.chance(0.5) ? to : -to; c.press('up'); this.after = { t: 0.18, kind: 'air' }; }
+    else { c.move = U.chance(0.5) ? to : -to; this.jump(); this.after = { t: 0.18, kind: 'air' }; }
   },
 
   // it never rests: if it has stayed in one spot for ~0.8s it moves somewhere else
@@ -155,15 +155,56 @@ TG.ShadeBrain.prototype = {
     var k = U.weighted([{ w: 1.2, k: 'dash' }, { w: 1.4, k: 'jump' }, { w: 0.8, k: 'over' }, { w: 0.6, k: 'roll' }]).k;
     var dir = U.chance(0.5) ? 1 : -1;
     if (k === 'dash') { c.move = dir; c.press('dash'); }
-    else if (k === 'jump') { c.move = dir; c.press('up'); if (U.chance(0.5)) this.after = { t: 0.2, kind: 'air' }; }
-    else if (k === 'over') { c.move = to; c.press('up'); this.after = { t: 0.2, kind: 'air' }; }
+    else if (k === 'jump') { c.move = dir; this.jump(); if (U.chance(0.5)) this.after = { t: 0.2, kind: 'air' }; }
+    else if (k === 'over') { c.move = to; this.jump(); this.after = { t: 0.2, kind: 'air' }; }
     else if (g) { c.move = dir; c.press('roll'); }
     if (dist < 220 && U.chance(0.45)) this.after = this.after || { t: 0.3, kind: 'punish' };
   },
 
+  // a held jump (the sim cuts short hops when the key is released), so the Mirror jumps as high as you do
+  jump: function () { this.c.press('up'); this.upT = 0.3; },
+
+  // the platform a fighter is standing on (or null)
+  platOf: function (x) {
+    if (!x.onPlatform || !x.grounded) return null;
+    var pl = x.scene.world.platforms;
+    for (var i = 0; i < pl.length; i++) if (Math.abs(x.y - pl[i].y) < 6 && x.x >= pl[i].x - 4 && x.x <= pl[i].x + pl[i].w + 4) return pl[i];
+    return null;
+  },
+
+  // Player on a platform: run to the nearer side of it, jump (twice if needed) and land on top, like the Warden's
+  // leap. Returns true when it handled this frame.
+  reachPlatform: function (dt, foe, P) {
+    var f = this.f, c = this.c, U = TG.U, cx = P.x + P.w / 2;
+    if (this.platOf(f) === P) return false;                       // already up there: fight normally
+    if (f.grounded) {
+      if (!this.side) this.side = f.x < cx ? -1 : 1;
+      var sx = this.side < 0 ? P.x - 40 : P.x + P.w + 40;          // a spot just outside the platform
+      if (Math.abs(f.x - sx) > 70 && !(f.x > P.x - 90 && f.x < P.x + P.w + 90)) { c.move = sx > f.x ? 1 : -1; return true; }
+      c.move = cx > f.x ? 1 : -1;                                    // close enough: jump onto it
+      if (f.y > P.y + 30) this.jump();
+      return true;
+    }
+    c.move = cx > f.x ? 1 : -1;
+    if (f.y > P.y + 10 && f.vy > -60 && f.airJumps > 0) this.jump();   // second jump to clear the edge
+    if (f.y < P.y + 4 && f.x > P.x && f.x < P.x + P.w) c.move = 0;
+    return true;
+  },
+
   update: function (dt) {
+    this.core(dt);
+    // stay on a platform while fighting on it: do not walk off the edge by accident
+    var f = this.f, c = this.c, P = this.platOf(f);
+    if (P && c.move) {
+      if (c.move < 0 && f.x < P.x + 26) c.move = 1;
+      else if (c.move > 0 && f.x > P.x + P.w - 26) c.move = -1;
+    }
+  },
+
+  core: function (dt) {
     var f = this.f, c = this.c, s = f.scene, U = TG.U, p = this.p;
-    c.now = s.nowMs; c.move = 0; c.hold('up', false); c.hold('down', false);
+    c.now = s.nowMs; c.move = 0; c.hold('down', false);
+    if (this.upT > 0) { this.upT -= dt; c.hold('up', true); } else c.hold('up', false);
     var foe = this.foe();
     if (f.dead || !foe || this.yielding) { c.hold('heal', false); return; }
     var dx = foe.x - f.x, dist = Math.abs(dx), to = dx >= 0 ? 1 : -1, g = f.grounded, w = s.world;
@@ -211,8 +252,8 @@ TG.ShadeBrain.prototype = {
         if (f.mode === 'free' || f.mode === 'dash') {
           if (a.kind === 'punish') { f.facing = to; this.startCombo('punish'); }
           else if (a.kind === 'rush' && dist > 90) { c.move = to; c.press('dash'); this.after = { t: 0.24, kind: 'punish' }; }
-          else if (a.kind === 'air') { c.move = to; c.press('up'); }
-          else if (a.kind === 'away') { c.move = -to; c.press(U.chance(0.5) ? 'dash' : 'up'); }
+          else if (a.kind === 'air') { c.move = to; this.jump(); }
+          else if (a.kind === 'away') { c.move = -to; (U.chance(0.5) ? c.press('dash') : this.jump()); }
           else if (a.kind === 'heal' && g) { this.beginHeal(to); }
         }
       }
@@ -223,7 +264,7 @@ TG.ShadeBrain.prototype = {
     this.cool -= dt;
 
     // 4) heal when hurt and charged: first get clear of the player, then channel
-    if (f.canHeal && g && f.healCharge >= 4 && f.hp < f.maxHp * 0.62 && !(foe.mode === 'attack' && dist < 160)) {
+    if (f.canHeal && g && f.healCharge >= 8 && f.hp < f.maxHp * 0.62 && !(foe.mode === 'attack' && dist < 160)) {
       if (dist < 230) { c.move = -to; c.press('dash'); this.after = { t: 0.34, kind: 'heal' }; }
       else this.beginHeal(to);
       return;
@@ -234,6 +275,11 @@ TG.ShadeBrain.prototype = {
       this.startCombo('punish'); return;
     }
 
+    // 5b) the player is on a platform we are not on: go up after them
+    var FP = this.platOf(foe);
+    if (FP && this.reachPlatform(dt, foe, FP)) return;
+    if (!FP) this.side = 0;
+
     // 6) never stand still for long
     if (this.stillT > 0.8) { this.stillT = 0; this.hop(dist, to, g); return; }
 
@@ -241,20 +287,20 @@ TG.ShadeBrain.prototype = {
     if (!g) {
       if (dist < 150 && Math.abs(dy) < 120 && U.chance(dt * 6)) c.press('light');
       c.move = dist > 70 ? to : 0;
-      if (f.vy > -100 && f.airJumps > 0 && foe.y < f.y - 60 && U.chance(dt * 5)) c.press('up');   // chase upward
+      if (f.vy > -100 && f.airJumps > 0 && foe.y < f.y - 60 && U.chance(dt * 5)) this.jump();   // chase upward
       return;
     }
 
     // 8) the player is on higher ground: jump after them. On a platform with the player below: drop.
     if (foe.grounded && dy < -70) {
       c.move = dist > 40 ? to : 0;
-      if (dist < 280 && U.chance(dt * 6)) { c.press('up'); this.after = { t: 0.22, kind: 'air' }; }
+      if (dist < 280 && U.chance(dt * 6)) { this.jump(); this.after = { t: 0.22, kind: 'air' }; }
       return;
     }
     if (f.onPlatform && dy > 70) {
-      c.hold('down', true); c.press('up'); c.move = dist > 60 ? to : 0; return;
+      c.hold('down', true); this.jump(); c.move = dist > 60 ? to : 0; return;
     }
-    if (foe.grounded === false && dist < 200 && U.chance(dt * 2.5)) { c.move = to; c.press('up'); return; }
+    if (foe.grounded === false && dist < 200 && U.chance(dt * 2.5)) { c.move = to; this.jump(); return; }
 
     // 9) neutral game
     if (this.phase === 2) { this.kite(dt, dist, to, foe, w); return; }
@@ -265,7 +311,7 @@ TG.ShadeBrain.prototype = {
       if (dist > 210) c.move = to;
       else if (dist < 110) c.move = -to;
       else c.move = this.strafeDir;
-      if (U.chance(dt * 1.5)) c.press('up');
+      if (U.chance(dt * 1.5)) this.jump();
       if (U.chance(dt * 0.9)) c.press('dash');
       return;
     }
@@ -273,7 +319,7 @@ TG.ShadeBrain.prototype = {
     if (dist <= 112) { this.startCombo('direct'); return; }
     if (dist < 360 && foeFacesMe && Math.random() < this.flank * 0.9) {
       if (Math.random() < 0.55) { c.move = to; c.press('dash'); this.after = { t: 0.26, kind: 'punish' }; }
-      else { c.move = to; c.press('up'); this.after = { t: 0.28, kind: 'air' }; }
+      else { c.move = to; this.jump(); this.after = { t: 0.28, kind: 'air' }; }
       this.cool = 0.4; return;
     }
     if (dist > 170) { c.move = to; c.press('dash'); this.after = { t: 0.24, kind: 'punish' }; this.cool = 0.4; return; }
@@ -296,7 +342,7 @@ TG.ShadeBrain.prototype = {
       } else { c.move = -to; if (U.chance(dt * 2)) c.press('dash'); }
     } else if (dist > 300) c.move = to;
     else c.move = this.strafeDir;
-    if (U.chance(dt * 1.6)) c.press('up');
+    if (U.chance(dt * 1.6)) this.jump();
     if (this.cool <= 0 && dist < 135) this.startCombo('direct');
     else if (this.cool <= 0 && dist < 330 && U.chance(dt * 1.5)) { c.move = to; c.press('dash'); this.after = { t: 0.24, kind: 'punish' }; }
   }

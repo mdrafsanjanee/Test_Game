@@ -16,7 +16,7 @@ TG.Combat.prototype = {
 
       var info = {
         dmg: dmg, poise: d.poise || 0, kbx: att.facing * (d.kb || 200),
-        hitstop: d.hitstop || 60, shake: d.shake, stale: stale < 0.95, src: att
+        hitstop: d.hitstop || 60, shake: d.shake, stale: stale < 0.95, src: att, id: d.id
       };
       if (att.stuns && (d.id === 'l3' || d.id === 'hv')) info.stun = d.id === 'hv' ? 0.8 : 0.6;   // finishers can stun
       if (foe.receiveHit(info)) {

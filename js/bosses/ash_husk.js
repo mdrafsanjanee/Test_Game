@@ -42,12 +42,12 @@ TG.registerBoss('ash_husk', {
     if (h.healed) {
       if (t.step < 3) { t.step = 3; t.t = 0; }
       say(b.dead ? '' : 'Whole again. Now end it.');
-    } else if (h.healCharge >= 4) {
+    } else if (h.healCharge >= 8) {
       t.step = 2;
       say(h.mode === 'heal' ? 'Keep holding…' : 'Hold  H  to heal.  Stay still. A hit will break it.');
     } else {
       t.step = 1;
-      say('You are hurt. Land 4 hits on the husk to earn a heal.   (' + h.healCharge + ' / 4)');
+      say('You are hurt. Charge a heal: 8 hits, or 4 heavy swings (K).   (' + h.healCharge + ' / 8)');
     }
   },
 

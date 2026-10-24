@@ -64,7 +64,7 @@ TG.registerBoss('mirror', {
     b.maxHp = 100; b.hp = 100; b.reflect = 0.7; b.shield = false;
     b.windupMul = 1.6; b.speedMul = 1.55; b.cdMul = 0.45; b.healCharge = 0;
     b.rigCfg.rim = 0xfff2d0; b.rigCfg.rimA = 0.9; b.rigCfg.eye = 0xffffff;
-    b.mode = 'hurt'; b.act = { t: -1700 }; b.invuln = 2.2; b.vx = 0; b.vy = -420; b.grounded = false;
+    b.mode = 'free'; b.act = null; b.invuln = 2.2; b.vx = 0; b.vy = -420; b.grounded = false;
     b.iframe = false; b.endCombo();
     if (src) { src.hp = Math.min(src.maxHp, src.hp + src.maxHp * 0.3); src.invuln = Math.max(src.invuln, 1.6); }   // a small breath (30%) before the hard part
     st.idle = -2.5;

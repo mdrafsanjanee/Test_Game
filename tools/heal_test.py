@@ -21,7 +21,7 @@ with sync_playwright() as p:
       const out={hp0:h.hp}; 
       // too early: no charge
       c.press('heal'); c.hold('heal',true); for(let i=0;i<10;i++) a.step(1/60); out.earlyMode=h.mode; c.hold('heal',false);
-      h.healCharge=4; a.boss.mode='free'; a.boss.x=1400; a.boss.think=99;
+      h.healCharge=8; a.boss.mode='free'; a.boss.x=1400; a.boss.think=99;
       c.press('heal'); c.hold('heal',true); for(let i=0;i<30;i++) a.step(1/60); out.midMode=h.mode;
       c.hold('heal',false); for(let i=0;i<3;i++) a.step(1/60); out.releaseMode=h.mode; out.chargeKept=h.healCharge; out.hpAfterRelease=h.hp;
       c.press('heal'); c.hold('heal',true); for(let i=0;i<100;i++) a.step(1/60); out.hp1=h.hp; out.charge1=h.healCharge; out.healed=h.healed; c.hold('heal',false);

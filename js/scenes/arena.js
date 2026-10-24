@@ -53,7 +53,7 @@ TG.ArenaScene = class extends Phaser.Scene {
 
   healHint() {
     var n = this.player.healCharge;
-    this.hintTxt.setText(this.player.hp >= this.player.maxHp ? 'Already whole.' : 'Land ' + (4 - n) + ' more hit' + (4 - n === 1 ? '' : 's') + ' to heal');
+    this.hintTxt.setText(this.player.hp >= this.player.maxHp ? 'Already whole.' : 'Charge ' + n + ' / 8  (heavy swing = 2, other hits = 1)');
     this.hintT = 1.6;
   }
 
@@ -148,7 +148,7 @@ TG.ArenaScene = class extends Phaser.Scene {
       .setOrigin(0.5, 1).setScrollFactor(0).setDepth(101).setShadow(0, 2, '#000', 6);
     this.subTxt = this.add.text(TG.W / 2, 132, '', Object.assign({ fontSize: '23px', align: 'center', wordWrap: { width: 960 } }, st))
       .setOrigin(0.5, 1).setScrollFactor(0).setDepth(101).setShadow(0, 2, '#000', 8);
-    this.healTxt = this.add.text(118, 49, '', Object.assign({ fontSize: '14px', color: '#fff2d0' }, st)).setScrollFactor(0).setDepth(101);
+    this.healTxt = this.add.text(154, 49, '', Object.assign({ fontSize: '14px', color: '#fff2d0' }, st)).setScrollFactor(0).setDepth(101);
     this.hintTxt = this.add.text(TG.W / 2, 210, '', Object.assign({ fontSize: '18px', color: '#c9c4dc', fontStyle: 'italic' }, st))
       .setOrigin(0.5).setScrollFactor(0).setDepth(101).setAlpha(0).setShadow(0, 2, '#000', 6);
     this.hintT = 0;
@@ -167,12 +167,12 @@ TG.ArenaScene = class extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.55); g.fillRect(38, 32, 300 * this.lagP, 8);
     g.fillStyle(0xbcd0ff, 1); g.fillRect(38, 32, 300 * fp, 8);
     // heal charge: four pips under the bar; they glow when a heal is ready (hold H)
-    var ready = p.healCharge >= 4, pulse = 0.6 + 0.4 * Math.sin(this.time.now / 140);
-    for (var i = 0; i < 4; i++) {
+    var ready = p.healCharge >= 8, pulse = 0.6 + 0.4 * Math.sin(this.time.now / 140);
+    for (var i = 0; i < 8; i++) {
       var on = i < p.healCharge;
-      g.fillStyle(0x000000, 0.55); g.fillCircle(45 + i * 17, 56, 6.5);
-      if (on) { g.fillStyle(ready ? 0xfff2d0 : 0xbcd0ff, ready ? pulse : 1); g.fillCircle(45 + i * 17, 56, 4.5); }
-      else { g.lineStyle(1.5, 0xbcd0ff, 0.45); g.strokeCircle(45 + i * 17, 56, 4.5); }
+      g.fillStyle(0x000000, 0.55); g.fillCircle(44 + i * 13, 56, 5.5);
+      if (on) { g.fillStyle(ready ? 0xfff2d0 : 0xbcd0ff, ready ? pulse : 1); g.fillCircle(44 + i * 13, 56, 3.8); }
+      else { g.lineStyle(1.3, 0xbcd0ff, 0.45); g.strokeCircle(44 + i * 13, 56, 3.8); }
     }
     this.healTxt.setText(ready ? 'H  heal' : '').setAlpha(pulse);
     var hf = [p, b];
@@ -183,9 +183,9 @@ TG.ArenaScene = class extends Phaser.Scene {
         g.arc(hx.x - this.cameras.main.scrollX, hx.y - 55, 62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, hx.act.t / TG.Player.HEAL_MS)); g.strokePath();
       }
     }
-    if (b.canHeal) for (var bi = 0; bi < 4; bi++) {           // the Mirror's own charge, so you can see when it may heal
-      g.fillStyle(0x000000, 0.55); g.fillCircle(TG.W / 2 + 330 + bi * 16, 675, 6);
-      if (bi < b.healCharge) { g.fillStyle(0xff9a8a, 1); g.fillCircle(TG.W / 2 + 330 + bi * 16, 675, 4); }
+    if (b.canHeal) for (var bi = 0; bi < 8; bi++) {           // the Mirror's own charge, so you can see when it may heal
+      g.fillStyle(0x000000, 0.55); g.fillCircle(TG.W / 2 + 300 + bi * 13, 675, 5);
+      if (bi < b.healCharge) { g.fillStyle(0xff9a8a, 1); g.fillCircle(TG.W / 2 + 300 + bi * 13, 675, 3.5); }
     }
     if (this.hintT > 0) { this.hintT -= real; this.hintTxt.setAlpha(Math.min(1, this.hintT * 2)); }
     else this.hintTxt.setAlpha(0);

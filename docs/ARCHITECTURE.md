@@ -104,10 +104,10 @@ Phase 1: protective shield. Break it once and it shatters (hero gets a 30% boost
 Outcomes are saved as `TG.Story.flag('mirror_outcome')` = `'mutual'|'forgiven'` and `TG.Record.decide('mirror', ...)`; endings read them.
 
 ## Healing, pause, skip, touch (engine)
-- Heal: hold `H` (hero only). Every landed hit adds a charge (max 4, `Player.healCharge`); with 4 charges and `hp < maxHp`, pressing H starts a ~1.25s channel (`mode 'heal'`, sword-raised pose). Release or any hit cancels it and loses progress (charge is kept); completing it restores 40% max HP and spends the charges. HUD pips + progress ring are in `arena.js`.
+- Heal: hold `H` (hero only). Landed hits add charge points (heavy swing = 2, anything else = 1, max 8, `Player.healCharge`); with 8 points and `hp < maxHp`, pressing H starts a ~1.25s channel (`mode 'heal'`, sword-raised pose). Release or any hit cancels it and loses progress (charge is kept); completing it restores 40% max HP and spends the charges. HUD pips + progress ring are in `arena.js`.
 - Tutorial: `ash_husk` boss in `ash_basin` (sequence item right after `cut:cliff_betrayal`). Hero starts at 42% HP, cannot die there, the husk will not fall until the hero has healed once.
 - Pause: `TG.Pause.attach(scene)` (`js/core/pause.js`) used by Arena and Cutscene. Esc/P toggle, Q quits. Scenes must `return` early from `update` while `scene.paused`.
-- Mirror agility: `TG.ShadeBrain` never stays in one spot over ~0.8s (dash/jump/roll hops), chases players onto platforms, drops through platforms, chains 3-hit combos whose finisher (and heavy) STUNS the hero (`att.stuns`, `info.stun`), and heals like the hero (`canHeal`: 4 hits, hold 1.25s, any hit breaks it). `tools/mirror4_test.py` checks it.
+- Mirror agility: `TG.ShadeBrain` never stays in one spot over ~0.8s (dash/jump/roll hops), is never stunned itself, runs to the side of a platform the player stands on and jumps up (held jumps, double jump), drops through platforms, chains 3-hit combos whose finisher (and heavy) STUNS the hero (`att.stuns`, `info.stun`), and heals like the hero (`canHeal`: 8 points, hold 1.25s, any hit breaks it). `tools/mirror4_test.py` checks it.
 - Healing spends all 4 shards the moment a heal starts; an interrupt wastes them.
 - Cutscene skip: hold Enter/Space to fast-forward x16 (release stops; a quick tap latches it on, tap again or Esc stops).
 - (old) Cutscene skip: fast-forwards the scene clock x16 (`time.timeScale`, `tweens.timeScale`, updater dt), so flags and choices still resolve; a choice prompt still waits for the player.
