@@ -175,10 +175,17 @@ TG.ArenaScene = class extends Phaser.Scene {
       else { g.lineStyle(1.5, 0xbcd0ff, 0.45); g.strokeCircle(45 + i * 17, 56, 4.5); }
     }
     this.healTxt.setText(ready ? 'H  heal' : '').setAlpha(pulse);
-    if (p.mode === 'heal' && p.act) {                       // progress ring while channelling
-      var sx = p.x - this.cameras.main.scrollX, sy = p.y - 55;
-      g.lineStyle(4, 0xfff2d0, 0.9); g.beginPath();
-      g.arc(sx, sy, 62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, p.act.t / TG.Player.HEAL_MS)); g.strokePath();
+    var hf = [p, b];
+    for (var hi = 0; hi < 2; hi++) {                          // progress ring while anyone channels a heal
+      var hx = hf[hi];
+      if (hx.mode === 'heal' && hx.act) {
+        g.lineStyle(4, hx === p ? 0xfff2d0 : 0xff9a8a, 0.9); g.beginPath();
+        g.arc(hx.x - this.cameras.main.scrollX, hx.y - 55, 62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, hx.act.t / TG.Player.HEAL_MS)); g.strokePath();
+      }
+    }
+    if (b.canHeal) for (var bi = 0; bi < 4; bi++) {           // the Mirror's own charge, so you can see when it may heal
+      g.fillStyle(0x000000, 0.55); g.fillCircle(TG.W / 2 + 330 + bi * 16, 675, 6);
+      if (bi < b.healCharge) { g.fillStyle(0xff9a8a, 1); g.fillCircle(TG.W / 2 + 330 + bi * 16, 675, 4); }
     }
     if (this.hintT > 0) { this.hintT -= real; this.hintTxt.setAlpha(Math.min(1, this.hintT * 2)); }
     else this.hintTxt.setAlpha(0);

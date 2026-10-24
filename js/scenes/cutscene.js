@@ -18,12 +18,27 @@ TG.CutsceneScene = class extends Phaser.Scene {
     if (!fn) { console.warn('Missing cutscene', this.d.id); TG.Flow.next(this, this.d.idx); return; }
 
     TG.Pause.attach(this, {});
-    // Skip: fast-forward the whole timeline (flags and choices still resolve; a choice waits for you)
-    this.ff = 1;
-    this.skipTxt = this.add.text(TG.W - 78, 30, 'Enter  skip', Object.assign({ fontSize: '14px', color: '#8a85a0' }, st)).setOrigin(1, 0.5).setDepth(299).setAlpha(0.7);
-    var skip = function () { if (self.paused || self.ff > 1) return; self.ff = 16; self.time.timeScale = 16; self.tweens.timeScale = 16; self.skipTxt.setText('skipping…'); };
-    this.input.keyboard.on('keydown-ENTER', skip);
-    this.input.keyboard.on('keydown-SPACE', skip);
+    // Skip: hold Enter/Space to fast-forward (release stops). A quick tap latches it on; tap again or Esc stops it.
+    // Flags and choices still resolve; a choice prompt waits for you.
+    this.ff = 1; this.ffLatch = false;
+    this.skipTxt = this.add.text(TG.W - 78, 30, 'hold Enter  skip', Object.assign({ fontSize: '14px', color: '#8a85a0' }, st)).setOrigin(1, 0.5).setDepth(299).setAlpha(0.7);
+    var setFF = function (n) {
+      self.ff = n; self.time.timeScale = n; self.tweens.timeScale = n;
+      self.skipTxt.setText(n > 1 ? 'skipping…  (Enter / Esc to stop)' : 'hold Enter  skip');
+    };
+    this.stopFF = function () { if (self.ff <= 1) return false; self.ffLatch = false; setFF(1); return true; };
+    var downAt = 0;
+    var onDown = function (ev) {
+      if (self.paused || (ev && ev.repeat)) return;
+      if (self.ff > 1 && self.ffLatch) { self.stopFF(); downAt = 0; return; }
+      downAt = self.game.getTime(); setFF(16);
+    };
+    var onUp = function () {
+      if (!downAt || self.ff <= 1 || self.ffLatch) return;
+      if (self.game.getTime() - downAt < 350) self.ffLatch = true; else self.stopFF();
+      downAt = 0;
+    };
+    ['ENTER', 'SPACE'].forEach(function (k) { self.input.keyboard.on('keydown-' + k, onDown); self.input.keyboard.on('keyup-' + k, onUp); });
     var finished = false;
     fn(this, function () {
       if (finished) return;

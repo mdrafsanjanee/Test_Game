@@ -176,10 +176,10 @@
     if (this.jumpRising && !c.held('up') && this.vy < -300) { this.vy *= 0.5; this.jumpRising = false; }
     if (this.vy >= 0) this.jumpRising = false;
 
-    if (this.isHero && c.peek('heal', 130)) {
+    if ((this.isHero || this.canHeal) && c.peek('heal', 130)) {
       if (g && this.healCharge >= HEAL_HITS && this.hp < this.maxHp) { this.startHeal(); return; }
       c.pressed('heal', 130);
-      if (this.healCharge < HEAL_HITS && this.scene.healHint) this.scene.healHint();
+      if (this.isHero && this.healCharge < HEAL_HITS && this.scene.healHint) this.scene.healHint();
     }
     if (c.peek('light', 130)) {
       this.startAttack(this.chain ? this.chain.id : (g ? 'l1' : 'a1'), 'light');
@@ -266,10 +266,8 @@
   };
 
   Player.prototype.onDealt = function (tgt, info) {
-    if (this.isHero) {
-      TG.Record.dealt(info.dmg);
-      if (this.healCharge < HEAL_HITS && ++this.healCharge === HEAL_HITS && TG.Sfx) TG.Sfx.play('heal_ready');
-    }
+    if (this.isHero) TG.Record.dealt(info.dmg);
+    if ((this.isHero || this.canHeal) && this.healCharge < HEAL_HITS && ++this.healCharge === HEAL_HITS && TG.Sfx) TG.Sfx.play('heal_ready', this.isHero ? 1 : 0.5);
   };
 
   // ---- healing: hold H with the sword raised; any hit interrupts ----------------------------------
@@ -277,9 +275,11 @@
     this.ctrl.pressed('heal', 130);
     this.endCombo();
     this.mode = 'heal'; this.act = { t: 0, pulse: 0 };
+    this.healCharge = 0;                      // all four shards are spent the moment you start; an interrupt wastes them
     this.vx = 0;
     this.scene.fx.ring(this.x, this.y - 55, 6, 50, 0xfff2d0, 0.35, 2);
     this.rec('heal');
+    if (!this.isHero) this.scene.fx.ring(this.x, this.y - 55, 6, 60, 0xff9a8a, 0.4, 2);
   };
   Player.prototype.healUpdate = function (dt) {
     var a = this.act, c = this.ctrl;
@@ -293,7 +293,7 @@
     }
     if (a.t >= HEAL_MS) {
       this.hp = Math.min(this.maxHp, this.hp + this.maxHp * HEAL_FRAC);
-      this.healCharge = 0; this.healed = (this.healed || 0) + 1;
+      this.healed = (this.healed || 0) + 1;
       this.mode = 'free'; this.act = null;
       this.scene.fx.ring(this.x, this.y - 55, 8, 150, 0xfff2d0, 0.7, 4);
       this.scene.fx.spark(this.x, this.y - 60, 1, 14, 0xfff2d0, 1);
@@ -365,13 +365,18 @@
     var a = this.act;
     a.t += dt * 1000;
     this.vx *= Math.pow(0.02, dt);
-    if (a.t >= 300) { this.mode = 'free'; this.act = null; }
+    if (a.stun) {                                   // stunned: dazed rings, no control until it wears off
+      a.ring -= dt;
+      if (a.ring <= 0) { a.ring = 0.16; this.scene.fx.ring(this.x, this.y - 112, 4, 20, 0xffe08a, 0.6, 2); }
+    }
+    if (a.t >= 300 + a.stun * 1000) { this.mode = 'free'; this.act = null; }
   };
 
   Player.prototype.receiveHit = function (info) {
     if (this.dead || this.invuln > 0 || this.iframe) return false;
     if (!(TG.debug.god && this.isHero)) this.hp -= info.dmg;
     this.flash = 0.12;
+    if (this.mode === 'heal') { this.mode = 'free'; this.act = null; this.scene.fx.ring(this.x, this.y - 55, 40, 70, 0xff9a8a, 0.5, 3); }   // a hit breaks any heal
     if (!this.isHero) {                       // the Mirror shrugs off light hits, reels from heavy ones
       this.mpoise = (this.mpoise || 0) + info.poise;
       this.invuln = 0.1;
@@ -405,10 +410,10 @@
       } else this.vx += info.kbx * 0.25;
       return true;
     }
-    this.invuln = 0.95;
+    this.invuln = info.stun ? 0.35 + info.stun + 0.5 : 0.95;
     this.endCombo();
     this.mode = 'hurt';
-    this.act = { t: 0 };
+    this.act = { t: 0, stun: info.stun || 0, ring: 0 };
     this.vx = info.kbx * 0.9;
     this.vy = -260;
     this.grounded = false;

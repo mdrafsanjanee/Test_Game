@@ -21,7 +21,8 @@ TG.registerBoss('mirror', {
     p.isBoss = true;
     p.dmgMul = 1.5;
     // baseline: fast legs, quick recovery, short but READABLE windups (the tell ring marks every swing)
-    p.speedMul = 1.32; p.windupMul = 2.1; p.recMul = 0.8; p.cdMul = 0.55;
+    p.speedMul = 1.42; p.windupMul = 1.9; p.recMul = 0.7; p.cdMul = 0.45;
+    p.canHeal = true; p.stuns = true;       // it heals like you do (4 hits, hold 1.25s, can be broken) and its finishers stun
     p.shield = true;
     p.brain = new TG.ShadeBrain(p, prof, { react: 0.1, evade: 0.5 });
     p.brain.cool = 2.6;
@@ -61,11 +62,11 @@ TG.registerBoss('mirror', {
     b.phase = 2; b.brain.phase = 2;
     b.brain.react = 0.07; b.brain.evade = 0.82; b.brain.cool = 2.6; b.brain.seq = null; b.brain.after = null;
     b.maxHp = 100; b.hp = 100; b.reflect = 0.7; b.shield = false;
-    b.windupMul = 1.7; b.speedMul = 1.5; b.cdMul = 0.5;
+    b.windupMul = 1.6; b.speedMul = 1.55; b.cdMul = 0.45; b.healCharge = 0;
     b.rigCfg.rim = 0xfff2d0; b.rigCfg.rimA = 0.9; b.rigCfg.eye = 0xffffff;
     b.mode = 'hurt'; b.act = { t: -1700 }; b.invuln = 2.2; b.vx = 0; b.vy = -420; b.grounded = false;
     b.iframe = false; b.endCombo();
-    if (src) { src.hp = src.maxHp; src.invuln = Math.max(src.invuln, 1.6); }   // a breath before the hard part
+    if (src) { src.hp = Math.min(src.maxHp, src.hp + src.maxHp * 0.3); src.invuln = Math.max(src.invuln, 1.6); }   // a small breath (30%) before the hard part
     st.idle = -2.5;
 
     for (var i = 0; i < 40; i++) scene.fx.spark(b.x, b.y - 55, Math.random() < 0.5 ? 1 : -1, 1, i % 2 ? 0x9fd0ff : 0xffffff, 1.5);

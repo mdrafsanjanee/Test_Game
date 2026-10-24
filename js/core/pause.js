@@ -15,6 +15,7 @@ TG.Pause = {
     scene.paused = false;
 
     function toggle(force) {
+      if (force === undefined && scene.stopFF && scene.stopFF()) return;   // Esc first stops a fast-forward
       var on = force === undefined ? !scene.paused : force;
       if (on === scene.paused || (on && scene.over)) return;
       scene.paused = on;

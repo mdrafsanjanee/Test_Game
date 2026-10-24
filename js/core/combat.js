@@ -18,6 +18,7 @@ TG.Combat.prototype = {
         dmg: dmg, poise: d.poise || 0, kbx: att.facing * (d.kb || 200),
         hitstop: d.hitstop || 60, shake: d.shake, stale: stale < 0.95, src: att
       };
+      if (att.stuns && (d.id === 'l3' || d.id === 'hv')) info.stun = d.id === 'hv' ? 0.8 : 0.6;   // finishers can stun
       if (foe.receiveHit(info)) {
         act.hit.add(foe);
         if (TG.Sfx) TG.Sfx.play(d.dmg >= 20 ? 'hit_heavy' : 'hit');

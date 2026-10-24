@@ -22,7 +22,7 @@ No install, no build. Phaser is vendored in `lib/`.
 | H (hold) | heal: raise the sword for ~1.2s; needs 4 landed hits, any hit on you interrupts |
 | S + jump | drop through a platform |
 | Esc / P | pause (Q leaves to the menu) |
-| Enter / Space | skip a cutscene (fast-forward) |
+| Enter / Space (hold) | fast-forward a cutscene; tap to latch, tap or Esc to stop |
 | N | mute music |
 
 Phones and tablets get on-screen buttons automatically (`?touch=1` forces them on a desktop). Play in landscape.
