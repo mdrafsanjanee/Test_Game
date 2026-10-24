@@ -16,6 +16,11 @@ You are Agent B on a two-agent team building a 2D action game in the GitHub repo
 `js/areas/*` (new files only), `js/bosses/*` (new files only), `js/cutscenes/*`, `js/data/dialogue_story.js`, `js/data/sequence.js`, `js/manifest.content.js`, `assets/*`.
 Do **not** edit anything else. If the engine needs something, open a GitHub issue titled `ENGINE REQUEST: <what>` with the exact API you want, and meanwhile stub around it.
 
+## Status (update this as you go)
+Done and merged: `ring_road` cutscene (cursed ring choice), `cliff_betrayal` cutscene, `ruins` area, `girl_guard` boss (the Hollow Attendant), `TG.Stage`/`TG.GirlLook` helpers, lava ending.
+New engine features you can use (see `docs/ARCHITECTURE.md`): music/SFX (`music:` on a boss def, `TG.Sfx.play`), a rear-guard `spin` attack for bosses, `both:true` hitboxes, and the Mirror's outcomes.
+Next: ruins NPC encounters, village, party-member bosses, palace + the girl's mockery boss, school butterflies cutscene, remaining endings. Add a music track for each new area boss (use `TG.Music` or a CC0 file via `TG.MUSIC_FILES`).
+
 ## Deliverables, in priority order (ship each as its own PR into `main`, from a `content/<name>` branch)
 1. **Vertical slice**: cutscene `cliff_betrayal` (the guide girl throws the hero into lava; cursed item flag `picked_cursed_item` changes what happens next) -> area `ruins` (broken palace, Hollow Knight-like silhouettes, cold palette) -> boss `girl_guard` or an equivalent mid-boss for it -> hooked into `TG.sequence` in `js/data/sequence.js`. Must play start to finish from the menu's Begin.
 2. **Ruins NPC encounters**: short scripted dialogue scenes (cutscenes) where broken mutated citizens reveal the truth, setting `TG.Story.flag(...)` values that the Mirror and the endings can read.

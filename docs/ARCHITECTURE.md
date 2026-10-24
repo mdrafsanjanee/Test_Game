@@ -81,6 +81,28 @@ Cutscenes can draw characters with `TG.Rig.draw(graphics, x, y, facing, pose, ri
 `djump` per second, preferred `dist`, `air` fraction, `combo` length). The Mirror boss and dialogue use it. B may add new fields to
 `TG.Record.save.flags` freely.
 
+## Audio (js/core/audio.js)
+Music and SFX are synthesized with Web Audio: no files, no licensing, and the music reacts to the fight.
+```js
+TG.Music.play('warden')      // tracks: 'menu', 'warden', 'mirror'. Set `music: 'id'` on a boss def and the arena plays it.
+TG.Music.phase(2)            // boss phase 2 layers/tempo (TG.Boss calls this automatically)
+TG.Music.fadeOut(ms)         // N toggles mute everywhere
+TG.Sfx.play('hit'|'hit_heavy'|'swing'|'swing_heavy'|'dash'|'roll'|'jump'|'jump2'|'hurt'|'tell'|'slam'|'roar'|'reflect'|'shatter'|'die'|'ui')
+```
+To add a track, add an entry to `TRACKS` in audio.js (`bpm: [phase1, phase2]`, `step(i, t, sd, phase, bus)` called per 16th note; helpers `tone`, `noise`, `kick`, `snare`, `hat`, `chord`).
+To use real recordings (CC0 etc.) instead, put files in `assets/music/` and set `TG.MUSIC_FILES = { ruins: 'assets/music/ruins.ogg', ruins_p2: '...' }` in a content file; a file always wins over the synthesized track. Check levels with `python3 tools/audio_level.py`.
+
+## Boss features added since v1 (see warden.js and mirror.js)
+- `spin` attack id: if a boss defines an attack with id `spin` (use `both:true, spin:true, armor:true`), phase 2 automatically fires it whenever the player is behind the boss or just hit it from behind (`Boss.rearGuard`). Add it to any boss that must not be flanked.
+- `both:true` hitbox centred on the boss (`reach` = half-width), `smearY` smear height, `p2tempo` (phase 2 speed, default 0.72), `music` track id.
+- `TG.Player` takes tuning knobs (`speedMul`, `windupMul`, `recMul`, `cdMul`) so a boss can be "the hero, but different".
+- Record: `TG.Record.flank()` (0 head-on .. 1 always behind) and profile fields `behind`, `cross`.
+
+## The Mirror (reference for "boss built from the player")
+Baseline is the same for everyone: fast, evasive, reads your attacks. The record only picks STYLE (`TG.ShadeBrain`: slips behind you or meets you head-on) plus dodge habit, combo length, heavy-swing habit.
+Phase 1: protective shield. Break it once and it shatters (hero healed to full). Phase 2: 70% of every blow you land is reflected onto you and the killing blow is always lethal to both (`scene.mutualKill`, outcome `mutual`). It kites and dodges. Stop swinging ~10s and it yields (`finishEncounter('forgiven')`). Dying anywhere in this fight shows "How did I become this?".
+Outcomes are saved as `TG.Story.flag('mirror_outcome')` = `'mutual'|'forgiven'` and `TG.Record.decide('mirror', ...)`; endings read them.
+
 ## Combat rules (engine, do not bypass)
 Hero moves: `J` strike (3-hit chain; the 3rd hit is a heavier, committed finisher), `K` heavy swing (slow, armor-breaking, breaks guards),
 `L` dash (i-frames, air dash once), `I` roll (i-frames, damages), `W/Space` jump + double jump. Spam protection is structural:

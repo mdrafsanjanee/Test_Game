@@ -21,8 +21,9 @@ No install, no build. Phaser is vendored in `lib/`.
 | I | roll (damages enemies) |
 | S + jump | drop through a platform |
 | Esc | leave fight |
+| N | mute music |
 
-Dev: `?boss=warden`, `?boss=mirror`, `?god=1`, `?bot=1`, `?fps=1`.
+Dev: `?boss=warden`, `?boss=mirror`, `?boss=girl_guard`, `?god=1`, `?bot=1`, `?fps=1`.
 
 ## Docs
 - `docs/ARCHITECTURE.md`: how the engine works and how two agents split the work
