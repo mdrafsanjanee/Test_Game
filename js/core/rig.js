@@ -160,6 +160,106 @@
     }
   }
 
+
+  // ---- secondary motion: cloth that trails behind the body --------------------------------------------------
+  // One system for scarves, ribbons, hair tufts, coat tails and capes. A `trail` is a short chain whose points chase the
+  // anchor with a delay that grows toward the tip, so it streams behind a run, swings on a turn and settles when still.
+  //   cfg.trails = [{ at, dx, dy, n, seg, w, color, edge, k, kd, back, fall, wave, wf, fork, front }]
+  //     at     'neck' | 'head' | 'sh' | 'hip' | 'hand'   which joint it grows from      dx,dy  offset in rig px (dx flips with facing)
+  //     n, seg number of points and their spacing (rig px)   w  width at the root   color / edge  fill and a lighter outline
+  //     k, kd  how quickly points follow, and how much lazier each further point is     back, fall  resting direction (fractions of seg)
+  //     wave, wf  idle flutter amplitude and speed        fork  swallow-tail on the tip      front  draw over the body instead of behind it
+  // State lives on cfg._cl, so every fighter (one rig config each) owns its own cloth. TG.Rig.trail() can also be called directly.
+  function nowSec() { return (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000; }
+
+  function trail(g, st, ax, ay, f, o, s, alpha) {
+    var n = o.n || 5, seg = (o.seg || 9) * s, t = nowSec(), i;
+    if (!st.pts || st.pts.length !== n || Math.abs(st.pts[0].x - ax) > 240 || Math.abs(st.pts[0].y - ay) > 240) {
+      st.pts = []; st.t = t;
+      for (i = 0; i < n; i++) st.pts.push({ x: ax - f * seg * i * 0.9, y: ay + seg * i * 0.3 });
+    }
+    var dt = Math.min(0.05, Math.max(0, t - st.t)); st.t = t;
+    var pts = st.pts, back = o.back == null ? 0.92 : o.back, fall = o.fall == null ? 0.34 : o.fall;
+    var wave = (o.wave == null ? 1.3 : o.wave) * s, wf = o.wf || 3.1, ph = o.ph || 0;
+    pts[0].x = ax; pts[0].y = ay;
+    for (i = 1; i < n; i++) {
+      var tx = pts[i - 1].x - f * seg * back, ty = pts[i - 1].y + seg * fall + Math.sin(t * wf + i * 0.9 + ph) * wave;
+      var k = 1 - Math.exp(-((o.k || 24) - i * (o.kd == null ? 3.2 : o.kd)) * dt);
+      pts[i].x += (tx - pts[i].x) * k; pts[i].y += (ty - pts[i].y) * k;
+      var dx = pts[i].x - pts[i - 1].x, dy = pts[i].y - pts[i - 1].y, d = Math.sqrt(dx * dx + dy * dy);
+      if (d > seg) { pts[i].x = pts[i - 1].x + dx / d * seg; pts[i].y = pts[i - 1].y + dy / d * seg; }
+    }
+    var w0 = (o.w || 6) * s, col = o.color, edge = o.edge, al = (o.a == null ? 0.95 : o.a) * alpha;
+    var flat = o.flat != null ? o.flat : (o.w || 6) >= 5;
+    if (flat) {
+      // flat cloth: a strip that twists as it flutters (its apparent width breathes), outlined in the edge colour
+      var Ls = [], Rs = [];
+      for (i = 0; i < n; i++) {
+        var a0 = pts[Math.max(0, i - 1)], a1 = pts[Math.min(n - 1, i + 1)], tx2 = a1.x - a0.x, ty2 = a1.y - a0.y, tl = Math.sqrt(tx2 * tx2 + ty2 * ty2) || 1;
+        var nx = -ty2 / tl, ny = tx2 / tl;
+        var hw = w0 * (1 - i / (n - 1) * 0.72) * (0.55 + 0.45 * Math.abs(Math.cos(t * (o.tw || 1.7) + i * 0.8 + ph))) / 2;
+        Ls.push({ x: pts[i].x + nx * hw, y: pts[i].y + ny * hw, e: { x: pts[i].x + nx * (hw + 1.5 * s), y: pts[i].y + ny * (hw + 1.5 * s) } });
+        Rs.push({ x: pts[i].x - nx * hw, y: pts[i].y - ny * hw, e: { x: pts[i].x - nx * (hw + 1.5 * s), y: pts[i].y - ny * (hw + 1.5 * s) } });
+      }
+      for (var ps = edge != null ? 0 : 1; ps < 2; ps++) {
+        g.fillStyle(ps === 0 ? edge : col, al);
+        for (i = 1; i < n; i++) {
+          var l0 = ps === 0 ? Ls[i - 1].e : Ls[i - 1], l1 = ps === 0 ? Ls[i].e : Ls[i], r0 = ps === 0 ? Rs[i - 1].e : Rs[i - 1], r1 = ps === 0 ? Rs[i].e : Rs[i];
+          g.fillTriangle(l0.x, l0.y, r0.x, r0.y, l1.x, l1.y);
+          g.fillTriangle(r0.x, r0.y, r1.x, r1.y, l1.x, l1.y);
+        }
+      }
+    } else {
+      for (var pass = edge != null ? 0 : 1; pass < 2; pass++) {
+        for (i = n - 1; i >= 1; i--) {
+          var w = w0 * (1 - (i - 1) / n * 0.7) + (pass === 0 ? 1.8 * s : 0);
+          var c = pass === 0 ? edge : col;
+          g.lineStyle(w, c, al);
+          g.beginPath(); g.moveTo(pts[i - 1].x, pts[i - 1].y); g.lineTo(pts[i].x, pts[i].y); g.strokePath();
+          g.fillStyle(c, al); g.fillCircle(pts[i].x, pts[i].y, w / 2);
+        }
+      }
+    }
+    if (o.fork) {                                                              // swallow-tail: a small notch cut into the tip
+      var e = pts[n - 1], q = pts[n - 2], ang = Math.atan2(e.y - q.y, e.x - q.x), L = w0 * 0.7;
+      g.fillStyle(col, al);
+      g.fillTriangle(e.x + Math.cos(ang) * L * 0.1, e.y + Math.sin(ang) * L * 0.1,
+                     e.x + Math.cos(ang + 0.8) * L, e.y + Math.sin(ang + 0.8) * L,
+                     e.x + Math.cos(ang - 0.8) * L, e.y + Math.sin(ang - 0.8) * L);
+    }
+    if (!flat) { g.fillStyle(col, al); g.fillCircle(ax, ay, w0 * 0.55); }
+  }
+
+  function trails(g, p, cfg, x, y, f, alpha, front) {
+    var list = cfg.trails || (cfg.scarf ? [Object.assign({ at: 'neck', dx: -2, dy: 2 }, cfg.scarf)] : null), s = cfg.scale, i;
+    if (!list) return;
+    var cl = cfg._cl || (cfg._cl = []);
+    for (i = 0; i < list.length; i++) {
+      var o = list[i];
+      if (!!o.front !== !!front) continue;
+      var base = o.at === 'head' ? p.head : o.at === 'sh' ? p.sh : o.at === 'hip' ? p.P : o.at === 'hand' ? p.hnB : p.neck;
+      trail(g, cl[i] || (cl[i] = {}), x + base.x + f * (o.dx || 0) * s, y + base.y + (o.dy || 0) * s, f, o, s, alpha);
+    }
+  }
+
+  // ---- ember cracks (the cursed ring's price) ------------------------------------------------
+  function burn(g, p, cfg, x, y, alpha) {
+    var s = cfg.scale, t = nowSec(), a = (0.55 + 0.3 * Math.sin(t * 5.3) + 0.1 * Math.sin(t * 13)) * alpha, i;
+    var A = { x: p.P.x + x, y: p.P.y + y }, B = { x: p.neck.x + x, y: p.neck.y + y };
+    g.lineStyle(1.7 * s, 0xff7a2a, a);
+    g.beginPath(); g.moveTo(A.x, A.y);
+    for (i = 1; i <= 4; i++) {
+      var u = i / 4, j = (i % 2 ? 1 : -1) * 2.6 * s;
+      g.lineTo(A.x + (B.x - A.x) * u + j, A.y + (B.y - A.y) * u);
+    }
+    g.strokePath();
+    var E = { x: p.elF.x + x, y: p.elF.y + y }, H = { x: p.hnF.x + x, y: p.hnF.y + y };
+    g.beginPath(); g.moveTo(E.x, E.y);
+    g.lineTo((E.x + H.x) / 2 + 2 * s, (E.y + H.y) / 2 - 1.5 * s); g.lineTo(H.x, H.y);
+    g.strokePath();
+    g.fillStyle(0xffb347, a * 0.9); g.fillCircle(H.x, H.y, 1.8 * s);
+  }
+
   TG.Rig = {
     defaults: {
       scale: 1, thigh: 19, shin: 19, torso: 30, upper: 16, fore: 16, headR: 9.5, limb: 6.5, torsoW: 10,
@@ -168,21 +268,55 @@
     },
 
     kin: kin,
+    trail: trail,
+
+    // Reusable looks. Each returns a fresh trails array.
+    presets: {
+      // the hero: a warm scarf (the one colour on him), two hair tufts and short coat tails that all lag behind a run
+      hero: function (scarf, edge) {
+        return [
+          { at: 'hip', dx: -3, dy: 4, n: 4, seg: 9, w: 9, color: 0x0b0b16, edge: edge, k: 20, kd: 3, back: 0.7, fall: 0.5, wave: 1.6, ph: 1.0 },
+          { at: 'neck', dx: -2, dy: 2, n: 6, seg: 9, w: 10, color: scarf, k: 24, kd: 3.4, wave: 1.6, fork: true },
+          { at: 'head', dx: -4, dy: -6, n: 3, seg: 6, w: 4.2, color: 0x07070d, edge: edge, k: 30, kd: 5, back: 0.8, fall: 0.15, wave: 0.8, wf: 4.2 },
+          { at: 'head', dx: 0, dy: -8, n: 3, seg: 5, w: 3.6, color: 0x07070d, edge: edge, k: 28, kd: 5, back: 0.55, fall: -0.2, wave: 0.8, wf: 3.6, ph: 2 }
+        ];
+      },
+      // a short cloak: two broad panels from the shoulders
+      cape: function (color, edge) {
+        return [
+          { at: 'sh', dx: -2, dy: 2, n: 5, seg: 12, w: 20, color: color, edge: edge, k: 17, kd: 2.4, back: 0.95, fall: 0.5, wave: 2.2 },
+          { at: 'sh', dx: -4, dy: 6, n: 4, seg: 11, w: 16, color: color, edge: edge, k: 15, kd: 2.4, back: 0.85, fall: 0.62, wave: 2.6, ph: 1.4 }
+        ];
+      }
+    },
 
     // Draw a figure. `ghost` mode draws a flat single-colour silhouette (for afterimages).
+    // Optional cfg fields (all off by default):
+    //   trails: [...]           cloth that lags behind the body: scarf, ribbons, hair, coat tails, cape (see trail() above)
+    //   faceless: true          a soft white glow instead of an eye (the face is withheld)
+    //   burn: true              glowing ember cracks across torso and front arm
     draw: function (g, x, y, f, pose, cfg, alpha, tint, ghost) {
       var p = kin(pose, cfg, f);
       p.f = f;
       alpha = alpha == null ? 1 : alpha;
       var body = tint != null ? tint : cfg.body;
       if (!ghost && cfg.rim != null) pass(g, p, cfg, cfg.rim, cfg.rimW * cfg.scale, cfg.rimA * alpha, x, y, true);
+      if (!ghost) trails(g, p, cfg, x, y, f, alpha, false);
       pass(g, p, cfg, body, 0, alpha, x, y, !!ghost);
+      if (!ghost) trails(g, p, cfg, x, y, f, alpha, true);
       if (!ghost) {
         var hx = p.head.x + x, hy = p.head.y + y, s = cfg.scale;
-        g.fillStyle(cfg.eye, 0.25 * alpha);
-        g.fillCircle(hx + f * 3.8 * s, hy - 0.6 * s, 4.6 * s);
-        g.fillStyle(cfg.eye, alpha);
-        g.fillCircle(hx + f * 3.8 * s, hy - 0.6 * s, 2.1 * s);
+        if (cfg.burn) burn(g, p, cfg, x, y, alpha);
+        if (cfg.faceless) {
+          g.fillStyle(0xffffff, 0.16 * alpha); g.fillCircle(hx + f * 5 * s, hy + 1 * s, 9.5 * s);
+          g.fillStyle(0xffffff, 0.34 * alpha); g.fillCircle(hx + f * 5 * s, hy + 1 * s, 6.2 * s);
+          g.fillStyle(0xffffff, 0.95 * alpha); g.fillCircle(hx + f * 5.4 * s, hy + 0.6 * s, 3.8 * s);
+        } else {
+          g.fillStyle(cfg.eye, 0.25 * alpha);
+          g.fillCircle(hx + f * 3.8 * s, hy - 0.6 * s, 4.6 * s);
+          g.fillStyle(cfg.eye, alpha);
+          g.fillCircle(hx + f * 3.8 * s, hy - 0.6 * s, 2.1 * s);
+        }
       }
       return p;
     }

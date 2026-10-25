@@ -10,8 +10,10 @@ TG.CutsceneScene = class extends Phaser.Scene {
     var self = this, st = { fontFamily: 'Georgia, serif', color: '#e8e6f0' };
     this.cameras.main.setBackgroundColor(0x000000);
     this.fx = new TG.FX(this);
-    this.subWho = this.add.text(TG.W / 2, 590, '', Object.assign({ fontSize: '15px', color: '#b8b2d0', fontStyle: 'italic' }, st)).setOrigin(0.5, 1).setDepth(100);
-    this.subTxt = this.add.text(TG.W / 2, 630, '', Object.assign({ fontSize: '23px', align: 'center', wordWrap: { width: 960 } }, st)).setOrigin(0.5, 1).setDepth(100);
+    this.tscale = 1; this.freeze = 0; this.clock = 0;       // clock = cutscene seconds (tools/cine_test.py steers by it)
+    this.cine = TG.Cine.attach(this);                // letterbox, grade, camera, motes (js/core/cinematic.js)
+    this.subWho = this.add.text(TG.W / 2, 590, '', Object.assign({ fontSize: '15px', color: '#b8b2d0', fontStyle: 'italic' }, st)).setOrigin(0.5, 1).setScrollFactor(0).setDepth(100);
+    this.subTxt = this.add.text(TG.W / 2, 630, '', Object.assign({ fontSize: '23px', align: 'center', wordWrap: { width: 960 } }, st)).setOrigin(0.5, 1).setScrollFactor(0).setDepth(100);
     this.updaters = [];
 
     var fn = TG.cutscenes[this.d.id];
@@ -21,9 +23,10 @@ TG.CutsceneScene = class extends Phaser.Scene {
     // Skip: hold Enter/Space to fast-forward (release stops). A quick tap latches it on; tap again or Esc stops it.
     // Flags and choices still resolve; a choice prompt waits for you.
     this.ff = 1; this.ffLatch = false;
-    this.skipTxt = this.add.text(TG.W - 78, 30, 'hold Enter  skip', Object.assign({ fontSize: '14px', color: '#8a85a0' }, st)).setOrigin(1, 0.5).setDepth(299).setAlpha(0.7);
+    this.skipTxt = this.add.text(TG.W - 78, 30, 'hold Enter  skip', Object.assign({ fontSize: '14px', color: '#8a85a0' }, st)).setOrigin(1, 0.5).setScrollFactor(0).setDepth(299).setAlpha(0.7);
+    this.applyTime = function () { self.time.timeScale = self.ff * self.tscale; self.tweens.timeScale = self.ff * self.tscale; };
     var setFF = function (n) {
-      self.ff = n; self.time.timeScale = n; self.tweens.timeScale = n;
+      self.ff = n; self.applyTime();
       self.skipTxt.setText(n > 1 ? 'skipping…  (Enter / Esc to stop)' : 'hold Enter  skip');
     };
     this.stopFF = function () { if (self.ff <= 1) return false; self.ffLatch = false; setFF(1); return true; };
@@ -64,9 +67,13 @@ TG.CutsceneScene = class extends Phaser.Scene {
   update(time, delta) {
     if (this.paused) return;
     var real = Math.min(delta, 50) / 1000, n = this.ff || 1, i, k;
+    if (this.freeze > 0) { this.freeze -= real; this.cine.update(real); return; }      // hit-stop: the world holds, the camera breathes
+    var sim = real * (this.tscale || 1);
     for (k = 0; k < n; k++) {                      // small fixed steps so fast-forward never overshoots a walk target
-      for (i = 0; i < this.updaters.length; i++) this.updaters[i](real);
-      this.fx.update(real);
+      for (i = 0; i < this.updaters.length; i++) this.updaters[i](sim);
+      this.fx.update(sim);
     }
+    this.clock += sim * n;
+    this.cine.update(real);
   }
 };

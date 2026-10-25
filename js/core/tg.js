@@ -24,4 +24,5 @@ window.TG = {
   TG.debug.bot = q.get('bot') === '1';
   TG.debug.fps = q.get('fps') === '1';
   TG.debug.boss = q.get('boss') || null;
+  TG.debug.cut = q.get('cut') || null;        // ?cut=cliff_betrayal jumps straight into a cutscene
 })();

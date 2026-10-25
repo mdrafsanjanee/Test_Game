@@ -27,9 +27,10 @@ No install, no build. Phaser is vendored in `lib/`.
 
 Phones and tablets get on-screen buttons automatically (`?touch=1` forces them on a desktop). Play in landscape.
 
-Dev: `?boss=warden`, `?boss=mirror`, `?boss=girl_guard`, `?god=1`, `?bot=1`, `?fps=1`.
+Dev: `?boss=warden`, `?boss=mirror`, `?boss=girl_guard`, `?cut=cliff_betrayal`, `?flag=picked_cursed_item`, `?cine=0`, `?god=1`, `?bot=1`, `?fps=1`.
 
 ## Docs
 - `docs/ARCHITECTURE.md`: how the engine works and how two agents split the work
 - `docs/PLOT.md`: the story and design decisions
+- `docs/CINEMATIC.md`: art direction, character identity rules, the cinematic toolkit and the cloth system
 - `docs/AGENT_B_PROMPT.md`: the brief for the content agent

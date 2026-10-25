@@ -30,6 +30,7 @@
         hp: 460, speed: 235, pref: [110, 220], phaseAt: 0.5, poise: 90, intro: 2.6, w: 56, h: 150,
         think: [0.22, 0.65],
         rig: { scale: 1.58, horns: 17, limb: 7.5, torsoW: 13, rim: 0xff6a2a, rimA: 0.6, rimW: 4, eye: 0xffb347,
+               trails: TG.Rig.presets.cape(0x5a1c10, 0xff6a2a),      // a heavy tattered cape, edged by the mountain's glow
                weapon: { len: 78, w: 6, color: 0xff8a3a } },
         attacks: [
           { id: 'cleave', windup: 540, active: 120, recover: 520, dmg: 18, reach: 152, off: 10, top: -156, bot: 0, kb: 360,

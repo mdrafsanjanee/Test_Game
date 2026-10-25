@@ -81,6 +81,10 @@ Cutscenes can draw characters with `TG.Rig.draw(graphics, x, y, facing, pose, ri
 `djump` per second, preferred `dist`, `air` fraction, `combo` length). The Mirror boss and dialogue use it. B may add new fields to
 `TG.Record.save.flags` freely.
 
+## Cinematic layer and character look
+`js/core/cinematic.js` (`scene.cine`: letterbox, camera shots, grade, vignette, light shafts, motes, slow-mo, hit-stop) and the rig's `trails` cloth system are documented in `docs/CINEMATIC.md`.
+Cutscene scenes expose `scene.clock` (cutscene seconds); `tools/cine_test.py` and `tools/cast.py` screenshot cutscenes and characters headlessly.
+
 ## Audio (js/core/audio.js)
 Music and SFX are synthesized with Web Audio: no files, no licensing, and the music reacts to the fight.
 ```js
