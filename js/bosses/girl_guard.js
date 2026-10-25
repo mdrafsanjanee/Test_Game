@@ -65,6 +65,12 @@
         hp: 360, speed: 330, pref: [90, 200], phaseAt: 0.5, poise: 70, intro: 2.2, w: 40, h: 124,
         think: [0.25, 0.6],
         rig: { scale: 1.25, limb: 4.8, torsoW: 8.5, rim: 0x9fd0e0, rimA: 0.55, rimW: 3.5, eye: 0xcfeeff,
+               trails: [                                                          // a servant's look: kerchief knotted at the head, apron strings at the back
+                 { at: 'head', dx: -5, dy: -4, n: 4, seg: 8, w: 9, color: 0x8fb0c4, edge: 0x4a6a80, k: 18, kd: 2.6, back: 0.9, fall: 0.5, wave: 2, fork: true },
+                 { at: 'head', dx: -3, dy: -6, n: 3, seg: 7, w: 8, color: 0x6a8aa0, edge: 0x4a6a80, k: 20, kd: 2.6, back: 0.7, fall: 0.8, wave: 2.4, ph: 1.5, fork: true },
+                 { at: 'hip', dx: -3, dy: -5, n: 4, seg: 9, w: 8, color: 0xb8d0dc, edge: 0x4a6a80, k: 16, kd: 2.4, back: 0.9, fall: 0.6, wave: 2.2, ph: 0.8, fork: true },
+                 { at: 'hip', dx: -2, dy: -3, n: 4, seg: 8, w: 7, color: 0x8fb0c4, edge: 0x4a6a80, k: 18, kd: 2.4, back: 0.6, fall: 0.9, wave: 2.6, ph: 2.4, fork: true }
+               ],
                weapon: { len: 52, w: 3.4, color: 0xd8e8f0 } },
         attacks: [
           // Three quick claws. The last one is slower and committed: the opening to hit back.

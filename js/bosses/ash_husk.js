@@ -10,7 +10,12 @@ TG.registerBoss('ash_husk', {
     var P = TG.Pose.make;
     return new TG.Boss(scene, x, y, this, {
       hp: 120, speed: 120, pref: [80, 140], poise: 400, intro: 1.4, w: 44, h: 112, think: [0.9, 1.6],
-      rig: { scale: 1.2, limb: 6.5, torsoW: 11, rim: 0xb08a6a, rimA: 0.4, rimW: 3, eye: 0xffb347, weapon: { len: 0, w: 0, color: 0x000000 } },
+      rig: { scale: 1.2, limb: 6.5, torsoW: 11, rim: 0xb08a6a, rimA: 0.4, rimW: 3, eye: 0xffb347, weapon: { len: 0, w: 0, color: 0x000000 },
+             burn: true,                                              // still glowing where the lava was
+             trails: [                                                // ash and smoke rising off its shoulders instead of cloth
+               { at: 'sh', dx: -3, dy: 0, n: 6, seg: 9, w: 11, color: 0x4a3a36, a: 0.5, k: 9, kd: 1.2, back: 0.35, fall: -0.8, wave: 3.6, tw: 1.1 },
+               { at: 'sh', dx: 3, dy: 2, n: 5, seg: 8, w: 8, color: 0x4a3a36, a: 0.4, k: 8, kd: 1.2, back: 0.2, fall: -0.9, wave: 4, ph: 2, tw: 1.3 }
+             ] },
       attacks: [
         { id: 'swipe', windup: 650, active: 140, recover: 900, dmg: 7, reach: 96, off: 4, top: -96, bot: 0, kb: 220,
           range: [0, 130], weight: 1, tags: {}, tell: 0xb08a6a, lunge: 120,

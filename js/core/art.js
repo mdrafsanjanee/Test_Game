@@ -48,10 +48,13 @@ TG.Art = {
     g.fillTriangle(x - w / 2, y, x + w / 2, y, x + w * 0.08, y + d * len);
   },
 
+  // Soft radial glow. Many thin layers so there is no visible banding (it used to be 5 hard rings).
   glow: function (g, x, y, r, color, a) {
-    for (var i = 5; i >= 1; i--) {
-      g.fillStyle(color, (a || 0.12) * (1 - i / 6));
-      g.fillCircle(x, y, r * i / 5);
+    var N = 18, per = (a || 0.12) * 2.5 / N;
+    for (var i = N; i >= 1; i--) {
+      var k = i / N;
+      g.fillStyle(color, per * (1.35 - k) * 1.0);
+      g.fillCircle(x, y, r * k);
     }
   },
 

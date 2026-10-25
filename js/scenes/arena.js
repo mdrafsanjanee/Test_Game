@@ -19,7 +19,8 @@ TG.ArenaScene = class extends Phaser.Scene {
     this.pg = this.add.graphics().setDepth(12);
     this.clock = 0; this.nowMs = 0; this.acc = 0; this.freeze = 0; this.slow = 1; this.over = false;
 
-    this.areaUpdate = area.build(this);
+    this.cine = TG.Cine.attach(this, { zoom: false });          // letterbox, grade, vignette, slow-mo (no camera zoom in fights)
+    this.areaUpdate = area.build(this);                         // (after attach, so an area can add light shafts and motes)
 
     this.ctrl = TG.debug.bot ? new TG.Ctrl() : new TG.KeyboardCtrl(this);
     this.player = new TG.Player(this, area.spawn.player, area.groundY, { team: 'hero', ctrl: this.ctrl });
@@ -36,9 +37,23 @@ TG.ArenaScene = class extends Phaser.Scene {
     this.cameras.main.fadeIn(500, 0, 0, 0);
     this.mstate = { idle: 0, yieldT: 0, said: {}, yielded: false };
     if (def.onStart) def.onStart(this);
+    this.cinematicIntro(def, area);
 
     TG.Pause.attach(this, { onQuit: function () { self.finishRecord('quit'); } });
     this.input.keyboard.on('keydown-F2', function () { TG.debug.god = !TG.debug.god; }, this);
+  }
+
+  // A short establishing beat: bars slide in, the place is named, the world holds its breath, then the fight starts.
+  // Skipped for bots and ?cine=0 so the test tools stay fast.
+  cinematicIntro(def, area) {
+    var c = this.cine, self = this;
+    c.vignette(0.55, 600);
+    if (TG.debug.bot || /[?&]cine=0/.test(location.search)) return;
+    this.freeze = 2.1;                                       // nobody can act yet
+    c.bars(true, 500);
+    c.grade(def.mood || 'none', null, 600);
+    c.title(area.name, def.name === '???' ? '' : def.name, 900);
+    this.time.delayedCall(1700, function () { c.bars(false, 600); c.grade('none', 0, 1400); });
   }
 
   // ---- services used by fighters and bosses ------------------------------------
@@ -69,6 +84,7 @@ TG.ArenaScene = class extends Phaser.Scene {
     this.finishRecord('lose');
     if (TG.Music) TG.Music.fadeOut(900);
     this.slow = 0.3;
+    this.cine.bars(true, 900); this.cine.grade('grey', null, 1200); this.cine.vignette(0.85, 1200);
     this.time.delayedCall(1500, function () {
       this.cameras.main.fadeOut(600, 0, 0, 0);
       this.time.delayedCall(650, function () {
@@ -86,6 +102,7 @@ TG.ArenaScene = class extends Phaser.Scene {
     TG.Record.decide('mirror', 'mutual');
     [h, m].forEach(function (f) { f.mode = 'dead'; f.dead = true; f.act = { t: 0 }; f.vy = -240; f.grounded = false; f.iframe = false; });
     this.freeze = 0.45; this.slow = 0.3;
+    this.cine.bars(true, 700); this.cine.flash(0xffffff, 1800, 0.95); this.cine.grade('white', null, 2200);
     this.shake(0.014, 800);
     this.fx.ring(m.x, m.y - 55, 10, 520, 0xffffff, 1.0, 6);
     this.fx.ring(h.x, h.y - 55, 10, 380, 0x9fd0ff, 0.8, 4);
@@ -104,6 +121,8 @@ TG.ArenaScene = class extends Phaser.Scene {
     TG.Story.flag('mirror_outcome', outcome);
     TG.Record.decide('mirror', outcome);
     this.fx.ring(this.boss.x, this.boss.y - 55, 10, 360, 0xfff2d0, 0.9, 4);
+    this.cine.bars(true, 1400); this.cine.grade('dusk', 0.2, 3000); this.cine.vignette(0.6, 2500); this.cine.shafts(0xfff2d0, 0.3);
+    this.cine.motes('dust', 40);
     if (TG.Music) TG.Music.fadeOut(4000);
     this.say(TG.Dialogue.mirror.forgiven);
     this.exitAfter(8000);
@@ -124,6 +143,7 @@ TG.ArenaScene = class extends Phaser.Scene {
     if (TG.Sfx) TG.Sfx.play('hit_heavy');
     this.freeze = 0.28;
     this.slow = 0.35;
+    this.cine.bars(true, 900); this.cine.flash(0xffffff, 700, 0.5); this.cine.vignette(0.7, 1200);
     this.shake(0.012, 500);
     this.fx.ring(b.x, b.y - 60, 10, 420, 0xffffff, 0.8, 5);
     if (this.def.onDefeated) this.def.onDefeated(this);
@@ -228,6 +248,7 @@ TG.ArenaScene = class extends Phaser.Scene {
     this.drawProjectiles();
     this.updateCamera(real);
     this.areaUpdate(real);
+    this.cine.update(real);
     this.drawHud(real);
     if (this.fpsT) this.fpsT.setText(Math.round(this.game.loop.actualFps) + ' fps');
   }

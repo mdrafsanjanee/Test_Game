@@ -41,8 +41,10 @@
   var HEAL_POSE = W({ lean: -22, shF: 175, elF: -12, shB: 170, elB: -8, hipF: 24, hipB: -24, head: 14, wpn: 20 });
   var ROLL_DEF = { id: 'roll', dmg: 7, poise: 12, reach: 54, off: -26, top: -48, bot: 0, kb: 240, hitstop: 70, shake: 0.003 };
 
-  var HERO_RIG = { scale: 1.15, rim: 0xa8c4ff, rimA: 0.55, eye: 0xffffff, weapon: { color: 0xe8eefc } };
-  var MIRROR_RIG = { scale: 1.15, rim: 0xe0524a, rimA: 0.65, eye: 0xff3a30, weapon: { color: 0xff9a8a } };
+  var HERO_RIG = { scale: 1.15, rim: 0xa8c4ff, rimA: 0.55, eye: 0xffffff, weapon: { color: 0xe8eefc },
+                   trails: TG.Rig.presets.hero(0xc4553a, 0x6f86b8) };      // warm scarf, hair tufts, coat tails: all of it lags behind every move
+  var MIRROR_RIG = { scale: 1.15, rim: 0xe0524a, rimA: 0.65, eye: 0xff3a30, weapon: { color: 0xff9a8a },
+                     trails: TG.Rig.presets.hero(0xdde4f2, 0xe0524a), faceless: true };   // the same shape with every colour inverted and no face: you, taken apart
 
   function Player(scene, x, y, opts) {
     opts = opts || {};

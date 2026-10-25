@@ -58,8 +58,13 @@ TG.Fighter.prototype = {
     var g = this.g;
     g.clear();
     var blink = this.invuln > 0 && !this.dead && Math.floor(this.time * 18) % 2 === 0;
-    var tint = this.flash > 0 ? 0xffffff : null;
-    TG.Rig.draw(g, this.x, this.y, this.facing, this.pose, this.rigCfg, blink ? 0.45 : 1, tint);
+    var tint = this.flash > 0 ? 0xffffff : null, pose = this.pose;
+    if (this.team === 'hero' && TG.Story.has('burned_lost_part')) {       // after the lava the hero never stands straight again
+      var hp = this._hunch || (this._hunch = TG.Pose.make());
+      TG.Pose.copy(pose, hp); hp.lean += 6; hp.head += 9;
+      pose = hp; this.rigCfg.burn = true;
+    }
+    TG.Rig.draw(g, this.x, this.y, this.facing, pose, this.rigCfg, blink ? 0.45 : 1, tint);
   },
 
   destroy: function () { this.g.destroy(); },
